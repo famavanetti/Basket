@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Referto Basket</title><meta name="theme-color" content="#0b1233">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css"></head><body>
+<div class="bar"><h1>🏀 Referto Basket</h1><button onclick="logout()">Esci</button></div>
+<div class="wrap">
+<a class="card" href="referto.html" style="--c:var(--or)"><span class="ic">🏀</span><span><b>Referto</b><small>Apri il referto di gara</small></span></a>
+<a class="card" href="anagrafica.html" style="--c:#1646b0"><span class="ic">👥</span><span><b>Anagrafica</b><small id="cnt">Staff e giocatori</small></span></a>
+<button class="btn p" id="install" style="display:none;margin-top:18px" onclick="installa()">⬇ Installa l'app</button>
+<p class="hint" id="ios" style="display:none">Su iPhone: tocca <b>Condividi</b> e poi <b>Aggiungi a schermata Home</b>.</p>
+</div>
+<script src="app.js"></script>
+<script>richiediLogin();
+var a=anagGet(),g=a.filter(function(x){return x.tipo==='giocatore'}).length;
+document.getElementById('cnt').textContent=g+' giocatori · '+(a.length-g)+' staff';
+if(/iphone|ipad/i.test(navigator.userAgent)&&!navigator.standalone)document.getElementById('ios').style.display='block';</script></body></html>

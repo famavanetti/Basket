@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Anagrafica</title><meta name="theme-color" content="#0b1233">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css"></head><body>
+<div class="bar"><a href="home.html">← Home</a><h1>Anagrafica</h1></div>
+<div class="wrap">
+<div class="tabs"><button id="t-giocatore" onclick="tab('giocatore')">Giocatori</button><button id="t-staff" onclick="tab('staff')">Staff</button></div>
+<div id="list"></div>
+<button class="btn g" onclick="apri()">+ Aggiungi</button>
+<div class="row" style="margin-top:18px"><button class="btn" onclick="esporta()">Esporta file</button><button class="btn" onclick="document.getElementById('imp').click()">Importa file</button></div>
+<input type="file" id="imp" accept=".json" style="display:none" onchange="importa(this)">
+<p class="hint">I dati sono salvati su questo dispositivo. Usa Esporta/Importa per passarli ad altri telefoni.</p>
+</div>
+<div class="modal" id="m"><div class="sheet">
+<h2 id="mt" style="margin-bottom:4px">Nuovo</h2>
+<div class="row"><div><label>Cognome</label><input id="cognome"></div><div><label>Nome</label><input id="nome"></div></div>
+<div id="f-g" class="row"><div><label>N° maglia</label><input id="numero" type="number" min="0" max="99" inputmode="numeric"></div><div><label>Ruolo</label><select id="ruolo-g"><option value="">—</option><option>Playmaker</option><option>Guardia</option><option>Ala piccola</option><option>Ala grande</option><option>Centro</option></select></div></div>
+<div id="f-s"><label>Ruolo</label><select id="ruolo-s"><option>Allenatore</option><option>Vice allenatore</option><option>Dirigente</option><option>Preparatore</option><option>Medico</option><option>Scorer</option></select></div>
+<label>N° tessera / licenza</label><input id="lic">
+<div class="row" style="margin-top:16px"><button class="btn" onclick="chiudi()">Annulla</button><button class="btn p" onclick="salva()">Salva</button></div>
+<button class="btn r" id="del" style="margin-top:8px" onclick="elimina()">Elimina</button>
+</div></div>
+<script src="app.js"></script>
+<script>
+richiediLogin();
+var T='giocatore',ED=null,A=anagGet();
+function $(i){return document.getElementById(i)}
+function tab(t){T=t;$('t-giocatore').className=t==='giocatore'?'on':'';$('t-staff').className=t==='staff'?'on':'';render()}
+function render(){var L=A.filter(function(x){return x.tipo===T});
+ L.sort(function(a,b){return T==='giocatore'?(+a.numero||999)-(+b.numero||999):(a.cognome||'').localeCompare(b.cognome||'')});
+ $('list').innerHTML=L.length?L.map(function(x){return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T==='staff'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):'👤')+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+esc(x.ruolo||'')+(x.lic?' · '+esc(x.lic):'')+'</small></span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
+function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED||{tipo:T};
+ $('mt').textContent=ED?'Modifica':(T==='giocatore'?'Nuovo giocatore':'Nuovo staff');
+ $('f-g').style.display=x.tipo==='giocatore'?'flex':'none';$('f-s').style.display=x.tipo==='staff'?'block':'none';
+ $('cognome').value=x.cognome||'';$('nome').value=x.nome||'';$('numero').value=x.numero||'';$('lic').value=x.lic||'';
+ $('ruolo-g').value=x.tipo==='giocatore'?(x.ruolo||''):'';$('ruolo-s').value=x.tipo==='staff'?(x.ruolo||'Allenatore'):'Allenatore';
+ $('del').style.display=ED?'block':'none';$('m').className='modal on'}
+function chiudi(){$('m').className='modal'}
+function salva(){var c=$('cognome').value.trim(),n=$('nome').value.trim();if(!c&&!n){$('cognome').focus();return}
+ var tipo=ED?ED.tipo:T,o={id:ED?ED.id:'x'+Date.now().toString(36),tipo:tipo,cognome:c,nome:n,lic:$('lic').value.trim(),
+  numero:tipo==='giocatore'?$('numero').value:'',ruolo:tipo==='giocatore'?$('ruolo-g').value:$('ruolo-s').value};
+ A=ED?A.map(function(x){return x.id===o.id?o:x}):A.concat(o);anagPut(A);chiudi();render()}
+function elimina(){if(ED&&confirm('Eliminare '+ED.cognome+' '+ED.nome+'?')){A=A.filter(function(x){return x.id!==ED.id});anagPut(A);chiudi();render()}}
+function esporta(){var b=new Blob([JSON.stringify(A,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='anagrafica.json';a.click()}
+function importa(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;
+ if(confirm('Importare '+d.length+' elementi? Sostituiranno quelli attuali.')){A=d.filter(function(x){return x&&x.id&&(x.tipo==='giocatore'||x.tipo==='staff')});anagPut(A);render()}}catch(e){alert('File non valido')}i.value=''};r.readAsText(f)}
+tab('giocatore');
+</script></body></html>
