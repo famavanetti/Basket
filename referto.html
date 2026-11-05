@@ -85,7 +85,8 @@ button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2
 .modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
 .modal .box{background:var(--pan);border-radius:10px;padding:18px;max-width:420px;width:100%;max-height:80%;overflow:auto}
 .modal h3{margin-bottom:12px}
-.modal .opt{display:flex;width:100%;gap:12px;padding:12px;margin-bottom:6px;background:var(--row);border-radius:6px;text-align:left;font-weight:600}
+.modal .mh{font-size:11px;letter-spacing:.1em;color:#8d96bd;text-transform:uppercase;font-weight:700;margin:14px 2px 6px}.nav2{display:flex;gap:8px;margin-bottom:2px}.nav2 .opt{flex:1;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;margin:0;padding:14px 8px}
+.opt{display:flex;width:100%;gap:12px;padding:12px;margin-bottom:6px;background:var(--row);border-radius:6px;text-align:left;font-weight:600}
 .toc{color:#ffe600!important;font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#fff;color:#000;padding:12px 18px;border-radius:6px;font-weight:600;z-index:9}
 .jr{width:68px;height:68px;padding:0;justify-self:center}.jr svg{width:100%;height:100%}
@@ -395,7 +396,12 @@ function modalView(){
  if(m.k=='confirmEdit'){h+='<div class="mb" style="text-align:center"><h3 style="font-size:22px;margin:10px 0 8px">Sei sicuro di volerlo cambiare?</h3><p>Il roster è già confermato. Se vuoi modificarlo, il coach deve firmare di nuovo.</p></div><div style="display:flex;gap:10px;padding:0 18px 18px"><button class="opt" style="background:#eff0f5;color:#111;justify-content:center;margin:0" data-a="close">Torna indietro</button><button class="sv" style="flex:1;border-radius:6px" data-a="doEdit">Accetta</button></div>'}
  if(m.k=='wipe'){h+='<h3 class="qt" style="color:#ff6b6b">Azzera e ricomincia da capo</h3><p style="text-align:center;margin:-10px 0 16px">Il referto in corso viene cancellato e non si può recuperare. L’archivio dei referti già chiusi non viene toccato.</p><button class="opt" data-a="wipeDo" data-v="game"><span style="flex:1;text-align:left">Azzera la partita, tieni squadre e roster<br><small>Punteggio, registro, falli, timeout e cronometro tornano a zero. Si riparte dalla schermata roster.</small></span></button><button class="opt" data-a="wipeDo" data-v="all" style="background:#b3261e;color:#fff"><span style="flex:1;text-align:left">Cancella tutto, roster compresi<br><small>Anche squadre, giocatori, staff, ufficiali, note e firme tornano come all’inizio.</small></span></button><button class="opt" data-a="close">Annulla</button>'}
  if(m.k=='anag'){var sqs=anagSq(anagRead());h+='<h3>Importa da anagrafica</h3><p style="color:var(--mu);margin-bottom:12px">Verrà caricata nella <b>squadra '+(S.tab?'B':'A')+'</b>: sostituisce giocatori e staff attuali.</p>';if(!sqs.length)h+='<p style="margin-bottom:12px">L\'anagrafica è vuota: compilala prima dalla pagina Anagrafica.</p>';sqs.forEach(function(q,i){h+='<button class="opt" data-a="anagDo" data-v="'+i+'">'+esc(q.n)+' <small style="color:var(--mu)">· '+q.g+' giocatori · '+q.s+' staff</small></button>'});h+='<button class="opt" data-a="goAnag">Apri Anagrafica</button><button class="opt" data-a="close">Chiudi</button>'}
- if(m.k=='menu'){h+='<h3>Menu</h3><button class="opt" data-a="help">\ud83d\udcd6 Istruzioni</button><button class="opt" data-a="arch">Archivio referti</button>'+(S.screen=='setup'?'<button class="opt" data-a="anagOpen">\ud83d\udc65 Importa da anagrafica</button>':'')+'<button class="opt" data-a="goAnag">\u2190 Torna all\'anagrafica</button><button class="opt" data-a="goHome">\u2302 Home</button><button class="opt" data-a="notes">Note del referto'+(S.notes?' ✓':'')+'</button>'+(S.screen=='game'?(S.q>1?'<button class="opt" data-a="prevq">\u21a9 Torna al quarto precedente</button>':'')+'<button class="opt" data-a="pdf">PDF referto</button><button class="opt" data-a="editTeams">Modifica squadre</button><button class="opt" data-a="menu">Chiudi referto</button>':'')+'<button class="opt" data-a="wipeAsk" style="background:#b3261e;color:#fff">⚠ Azzera e ricomincia da capo</button><button class="opt" data-a="close">Chiudi</button>'}
+ if(m.k=='menu'){var H=function(t){return'<div class="mh">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
+ h+='<h3>Menu</h3><div class="nav2">'+B('goHome','<span style="font-size:24px;line-height:1">\u2302</span>Home')+B('goAnag','<span style="font-size:24px;line-height:1">\ud83d\udc65</span>Anagrafica')+'</div>';
+ if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica');
+ h+=H('Referto')+B('help','\ud83d\udcd6 Istruzioni')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''));
+ if(S.screen=='game')h+=(S.q>1?B('prevq','\u21a9 Torna al quarto precedente'):'')+B('pdf','PDF referto')+B('editTeams','Modifica squadre')+B('menu','Chiudi referto');
+ h+=H('Altro')+B('wipeAsk','\u26a0 Azzera e ricomincia da capo',' style="background:#b3261e;color:#fff"')+B('close','Chiudi')}
  return h+'</div></div>'}
 
 
@@ -577,6 +583,6 @@ o.addEventListener('click',function(e){var b=e.target.closest('[data-h]');if(!b)
 function closeHelp(){var o=document.getElementById('help');if(o)o.remove();document.body.classList.remove('hp')}
 document.addEventListener('keydown',function(e){if(e.key=='Escape'&&document.getElementById('help'))closeHelp()});
 </script>
-<div style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:8px"><a href="home.html" aria-label="Home" style="width:40px;height:40px;border-radius:50%;background:#0b1233e6;color:#fff;display:grid;place-items:center;text-decoration:none;font-size:18px;box-shadow:0 0 0 1px #2a3570">⌂</a><a href="anagrafica.html" aria-label="Anagrafica" style="width:40px;height:40px;border-radius:50%;background:#0b1233e6;color:#fff;display:grid;place-items:center;text-decoration:none;font-size:18px;box-shadow:0 0 0 1px #2a3570">👥</a></div>
+
 </body>
 </html>
