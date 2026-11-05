@@ -394,10 +394,23 @@ function modalView(){
  if(m.k=='pdf'){h+='<div class="mt"><button data-a="print">Stampa / salva PDF</button><span>Referto</span><button data-a="close" aria-label="Chiudi">✕</button></div><div class="paper">'+sheet()+'</div><div class="brow"><button class="g" data-a="curPdf">Scarica PDF</button><button data-a="curShare">Condividi</button></div>'}
  if(m.k=='confirmEdit'){h+='<div class="mb" style="text-align:center"><h3 style="font-size:22px;margin:10px 0 8px">Sei sicuro di volerlo cambiare?</h3><p>Il roster è già confermato. Se vuoi modificarlo, il coach deve firmare di nuovo.</p></div><div style="display:flex;gap:10px;padding:0 18px 18px"><button class="opt" style="background:#eff0f5;color:#111;justify-content:center;margin:0" data-a="close">Torna indietro</button><button class="sv" style="flex:1;border-radius:6px" data-a="doEdit">Accetta</button></div>'}
  if(m.k=='wipe'){h+='<h3 class="qt" style="color:#ff6b6b">Azzera e ricomincia da capo</h3><p style="text-align:center;margin:-10px 0 16px">Il referto in corso viene cancellato e non si può recuperare. L’archivio dei referti già chiusi non viene toccato.</p><button class="opt" data-a="wipeDo" data-v="game"><span style="flex:1;text-align:left">Azzera la partita, tieni squadre e roster<br><small>Punteggio, registro, falli, timeout e cronometro tornano a zero. Si riparte dalla schermata roster.</small></span></button><button class="opt" data-a="wipeDo" data-v="all" style="background:#b3261e;color:#fff"><span style="flex:1;text-align:left">Cancella tutto, roster compresi<br><small>Anche squadre, giocatori, staff, ufficiali, note e firme tornano come all’inizio.</small></span></button><button class="opt" data-a="close">Annulla</button>'}
- if(m.k=='menu'){h+='<h3>Menu</h3><button class="opt" data-a="help">\ud83d\udcd6 Istruzioni</button><button class="opt" data-a="arch">Archivio referti</button><button class="opt" data-a="notes">Note del referto'+(S.notes?' ✓':'')+'</button>'+(S.screen=='game'?(S.q>1?'<button class="opt" data-a="prevq">\u21a9 Torna al quarto precedente</button>':'')+'<button class="opt" data-a="pdf">PDF referto</button><button class="opt" data-a="editTeams">Modifica squadre</button><button class="opt" data-a="menu">Chiudi referto</button>':'')+'<button class="opt" data-a="wipeAsk" style="background:#b3261e;color:#fff">⚠ Azzera e ricomincia da capo</button><button class="opt" data-a="close">Chiudi</button>'}
+ if(m.k=='anag'){var sqs=anagSq(anagRead());h+='<h3>Importa da anagrafica</h3><p style="color:var(--mu);margin-bottom:12px">Verrà caricata nella <b>squadra '+(S.tab?'B':'A')+'</b>: sostituisce giocatori e staff attuali.</p>';if(!sqs.length)h+='<p style="margin-bottom:12px">L\'anagrafica è vuota: compilala prima dalla pagina Anagrafica.</p>';sqs.forEach(function(q,i){h+='<button class="opt" data-a="anagDo" data-v="'+i+'">'+esc(q.n)+' <small style="color:var(--mu)">· '+q.g+' giocatori · '+q.s+' staff</small></button>'});h+='<button class="opt" data-a="goAnag">Apri Anagrafica</button><button class="opt" data-a="close">Chiudi</button>'}
+ if(m.k=='menu'){h+='<h3>Menu</h3><button class="opt" data-a="help">\ud83d\udcd6 Istruzioni</button><button class="opt" data-a="arch">Archivio referti</button>'+(S.screen=='setup'?'<button class="opt" data-a="anagOpen">\ud83d\udc65 Importa da anagrafica</button>':'')+'<button class="opt" data-a="goAnag">\u2190 Torna all\'anagrafica</button><button class="opt" data-a="goHome">\u2302 Home</button><button class="opt" data-a="notes">Note del referto'+(S.notes?' ✓':'')+'</button>'+(S.screen=='game'?(S.q>1?'<button class="opt" data-a="prevq">\u21a9 Torna al quarto precedente</button>':'')+'<button class="opt" data-a="pdf">PDF referto</button><button class="opt" data-a="editTeams">Modifica squadre</button><button class="opt" data-a="menu">Chiudi referto</button>':'')+'<button class="opt" data-a="wipeAsk" style="background:#b3261e;color:#fff">⚠ Azzera e ricomincia da capo</button><button class="opt" data-a="close">Chiudi</button>'}
  return h+'</div></div>'}
 
 
+var RB_AK='rb_anagrafica_v1';
+function anagRead(){try{var a=JSON.parse(localStorage.getItem(RB_AK)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function anagSq(a){var g={};a.forEach(function(x){var k=(x.squadra||'').trim()||'Senza squadra';g[k]=g[k]||{n:k,g:0,s:0};if(x.tipo=='staff')g[k].s++;else g[k].g++});return Object.keys(g).sort().map(function(k){return g[k]})}
+var ROLEMAP={'allenatore':'Capo allenatore','vice allenatore':'Assistente allenatore','dirigente':'Accompagnatore','preparatore':'Preparatore fisico','scorer':'Accompagnatore'};
+function anagRole(r){if(ROLES.indexOf(r)>=0)return r;return ROLEMAP[String(r||'').toLowerCase()]||'Accompagnatore'}
+function anagImport(name){var T=S.teams[S.tab],all=anagRead().filter(function(x){return((x.squadra||'').trim()||'Senza squadra')==name}),
+ gp=all.filter(function(x){return x.tipo!='staff'}).sort(function(a,b){return(+a.numero||999)-(+b.numero||999)}),used={},ps=[],seen={};
+ gp.slice(0,15).forEach(function(x,i){var n=parseInt(x.numero,10);if(isNaN(n)||used[n]){n=4;while(used[n])n++}used[n]=1;ps.push({n:n,name:((x.cognome||'')+' '+(x.nome||'')).trim(),lic:x.lic||'',c:0,s:i<5?1:0,on:1,pts:0,f:0,court:0})});
+ var st=all.filter(function(x){return x.tipo=='staff'}).map(function(x,i){var r=anagRole(x.ruolo),on=seen[r]?0:1;seen[r]=1;return{id:Date.now()+i,role:r,nome:x.nome||'',cognome:x.cognome||'',lic:x.lic||'',on:on}});
+ if(!ps.length)return toast('Nessun giocatore in questa squadra');
+ T.p=ps;T.staff=st;if(name!='Senza squadra')T.name=name;S.sub='g';S.modal=null;render();
+ toast('Importati '+ps.length+' giocatori e '+st.length+' staff'+(gp.length>15?' (primi 15 su '+gp.length+')':''))}
 var AK='referto_archivio_v1';
 function archGet(){try{var a=JSON.parse(localStorage.getItem(AK)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function archPut(a){try{localStorage.setItem(AK,JSON.stringify(a));return true}catch(e){return false}}
@@ -433,6 +446,10 @@ document.addEventListener('click',function(e){
  if(a=='fclr'){S.f=null;return render()}
  if(a=='close'){if(e.target.closest('.box')&&!el.classList.contains('opt')&&el.dataset.a=='close'&&e.target!==el&&!el.classList.contains('modal'))return;S.modal=(S.modal&&S.modal.ret)?{k:'endscr'}:(S.modal&&S.modal.k=='archv'?{k:'arch'}:null);return render()}
  function val(id){return document.getElementById(id).value.trim()}
+ if(a=='goAnag'){location.href='anagrafica.html';return}
+ if(a=='goHome'){location.href='home.html';return}
+ if(a=='anagOpen'){if(S.tab>1)return toast('Apri prima la squadra A o B');S.modal={k:'anag'};return render()}
+ if(a=='anagDo'){var qs=anagSq(anagRead())[+v];if(qs)anagImport(qs.n);return}
  if(a=='more'){S.modal={k:'menu'};return render()}
  if(a=='help'){S.modal=null;render();openHelp();return}
  if(a=='notes'){S.modal={k:'notes'};return render()}
@@ -560,6 +577,6 @@ o.addEventListener('click',function(e){var b=e.target.closest('[data-h]');if(!b)
 function closeHelp(){var o=document.getElementById('help');if(o)o.remove();document.body.classList.remove('hp')}
 document.addEventListener('keydown',function(e){if(e.key=='Escape'&&document.getElementById('help'))closeHelp()});
 </script>
-<a href="home.html" aria-label="Home" style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:50;width:40px;height:40px;border-radius:50%;background:#0b1233e6;color:#fff;display:grid;place-items:center;text-decoration:none;font-size:18px;box-shadow:0 0 0 1px #2a3570">⌂</a>
+<div style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:8px"><a href="home.html" aria-label="Home" style="width:40px;height:40px;border-radius:50%;background:#0b1233e6;color:#fff;display:grid;place-items:center;text-decoration:none;font-size:18px;box-shadow:0 0 0 1px #2a3570">⌂</a><a href="anagrafica.html" aria-label="Anagrafica" style="width:40px;height:40px;border-radius:50%;background:#0b1233e6;color:#fff;display:grid;place-items:center;text-decoration:none;font-size:18px;box-shadow:0 0 0 1px #2a3570">👥</a></div>
 </body>
 </html>
