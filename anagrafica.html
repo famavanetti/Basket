@@ -28,7 +28,7 @@
 <button class="btn r" id="del" style="margin-top:8px" onclick="elimina()">Elimina</button>
 </div></div>
 <script src="app.js"></script>
-<script src="xlsx.full.min.js"></script>
+<script src="xlsx.full.min.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
 <script>
 richiediLogin();
 var T='giocatore',ED=null,FQ='',A=anagGet();
@@ -70,7 +70,7 @@ function salva(){var c=$('cognome').value.trim(),n=$('nome').value.trim(),tipo=E
   numero:tipo==='giocatore'?$('numero').value:'',ruolo:tipo==='giocatore'?$('ruolo-g').value:tipo==='staff'?$('ruolo-s').value:$('ruolo-o').value.trim()};
  A=ED?A.map(function(x){return x.id===o.id?o:x}):A.concat(o);anagPut(A);chiudi();render()}
 function elimina(){if(ED&&confirm('Eliminare '+ED.cognome+' '+ED.nome+'?')){A=A.filter(function(x){return x.id!==ED.id});anagPut(A);chiudi();render()}}
-function svuota(){if(A.length&&confirm('Eliminare TUTTA l\'anagrafica ('+A.length+' persone)? Esporta prima un file Excel se vuoi tenerne una copia.')){A=[];anagPut(A);render()}}
+function svuota(){if(A.length&&confirm('Eliminare TUTTA l\'anagrafica ('+A.length+' persone)?'+(window.rbSync&&rbSync.on?' ATTENZIONE: si cancella anche sugli altri dispositivi collegati.':'')+' Esporta prima un file Excel se vuoi tenerne una copia.')){A=[];anagPut(A);render()}}
 
 /* ---------- Excel ---------- */
 var COLS=['Tipo','Squadra','Genere','Cognome','Nome','Numero','Ruolo','Tessera'];
@@ -109,5 +109,7 @@ function importa(inp){var f=inp.files[0];if(!f)return;if(!window.XLSX){inp.value
   out.forEach(function(x){var i=idx[k(x)];if(i!==undefined){x.id=A[i].id;A[i]=x;upd++}else{idx[k(x)]=A.push(x)-1;agg++}});
   anagPut(A);render();alert('Importazione completata: '+agg+' nuovi, '+upd+' aggiornati.')
  }catch(e){alert('Impossibile leggere il file. Usa un file Excel (.xlsx, .xls) o CSV.')}inp.value=''};r.readAsArrayBuffer(f)}
+var _ap=anagPut;anagPut=function(a){var r=_ap(a);if(window.rbSync&&rbSync.on)rbSync.anagPush();return r};
+if(window.rbSync&&rbSync.on)rbSync.anagStart(function(){A=anagGet();render()});
 tab('giocatore');
 </script></body></html>

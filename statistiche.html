@@ -29,7 +29,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
 <p class="hint">Dal tablet: a fine gara premi <b>Invia al PC</b> e importa qui il file ricevuto (anche più file insieme).<br>I nomi dei giocatori vengono collegati all'Anagrafica di questo dispositivo tramite tessera o nome e cognome. Le statistiche restano al giocatore anche se gioca in una squadra diversa dalla sua.<br>I dati sono salvati in questo browser: fai ogni tanto la copia di sicurezza.</p>
 </div>
 <div class="modal" id="m"><div class="sheet big" id="mb"></div></div>
-<script src="app.js"></script><script src="xlsx.full.min.js"></script>
+<script src="app.js"></script><script src="xlsx.full.min.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
 <script>
 richiediLogin();
 function $(i){return document.getElementById(i)}
@@ -128,7 +128,7 @@ function scheda(r){var t=r.t,rows=r.games.map(function(x){var p=x.p,res=x.own>x.
  apriM('<h2>'+esc(r.name)+'</h2><p class="hint" style="text-align:left;margin:0 0 10px">'+esc(r.sq)+'</p><div class="tw"><table class="st"><thead><tr><th class="l">Data</th><th class="l">Avversario</th><th>Esito</th><th>Min</th><th>Pt</th><th>2P</th><th>3P</th><th>TL</th><th>Falli</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td class="l">Totale</td><td class="l">'+t.g+' partite</td><td></td><td>'+mm(t.sec)+'</td><td>'+t.pts+'</td><td>'+t.p2+'</td><td>'+t.p3+'</td><td>'+t.ftm+'/'+t.fta+'</td><td>'+t.f+'</td></tr><tr><td class="l">Media</td><td></td><td></td><td>'+mm(r.min)+'</td><td>'+d1(r.ppg)+'</td><td>'+d1(t.p2/t.g)+'</td><td>'+d1(t.p3/t.g)+'</td><td>'+pc(r.ftp)+'</td><td>'+d1(t.f/t.g)+'</td></tr></tfoot></table></div><button class="btn" onclick="chiudi()">Chiudi</button>')}
 function vediPartita(u){var g=G.filter(function(x){return x.uid===u})[0];if(!g)return;
  apriM('<h2>'+esc(g.a)+' '+g.sa+' – '+g.sb+' '+esc(g.b)+'</h2><p class="hint" style="text-align:left;margin:0 0 10px">'+dt(g.d)+(g.g?'':' · senza dati per le statistiche (partita giocata con la versione precedente)')+'</p><div class="paper">'+(g.html||'')+'</div><div class="row" style="margin-top:12px"><button class="btn" onclick="chiudi()">Chiudi</button><button class="btn r" data-del="'+esc(g.uid)+'" onclick="elimina(this.dataset.del)">Elimina</button></div>')}
-function elimina(u){if(!confirm('Eliminare questa partita dall\'archivio? Spariscono anche le statistiche che ne derivano.'))return;dbDel(u).then(function(){chiudi();return reload()})}
+function elimina(u){if(!confirm('Eliminare questa partita dall\'archivio? Spariscono anche le statistiche che ne derivano.'))return;if(window.rbSync&&rbSync.on)rbSync.delGame(u);dbDel(u).then(function(){chiudi();return reload()})}
 
 /* ---------- importa / copia di sicurezza / Excel ---------- */
 function leggi(f){return new Promise(function(ok){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=function(){ok(null)};r.readAsText(f)})}
@@ -156,5 +156,7 @@ function esportaXls(){if(!window.XLSX)return alert('Libreria Excel non caricata:
  w1['!cols']=[{wch:24},{wch:16}].concat(tot[0].slice(2).map(function(){return{wch:11}}));w2['!cols']=[{wch:24},{wch:16},{wch:11},{wch:16},{wch:18}].concat(pg[0].slice(5).map(function(){return{wch:10}}));
  XLSX.utils.book_append_sheet(wb,w1,'Totali');XLSX.utils.book_append_sheet(wb,w2,'Per partita');
  XLSX.writeFile(wb,'statistiche'+(FQ?'_'+FQ.replace(/[^A-Za-z0-9]+/g,'_'):'')+'.xlsx')}
-tab('g');dbOpen().then(reload).catch(function(){$('out').innerHTML='<div class="empty">Questo browser non permette di salvare l\'archivio (navigazione privata?).</div>'});
+function unisci(items){var have={};G.forEach(function(g){have[g.uid]=g});var add=[];items.forEach(function(it){if(!it||!it.a||!it.b||!it.d)return;if(!it.uid)it.uid='o'+it.id+'|'+it.a+'|'+it.b+'|'+it.d;var o=have[it.uid];if(o&&(o.g||!it.g))return;have[it.uid]=it;add.push(it)});return add.length?dbPut(add).then(reload):0}
+function cloud(){if(window.rbSync&&rbSync.on){rbSync.watchGames(unisci);rbSync.anagStart(function(){render()})}}
+tab('g');dbOpen().then(reload).then(cloud).catch(function(){$('out').innerHTML='<div class="empty">Questo browser non permette di salvare l\'archivio (navigazione privata?).</div>'});
 </script></body></html>

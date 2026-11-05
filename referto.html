@@ -3,6 +3,8 @@
 <head>
 <script>try{var _t=+localStorage.getItem('rb_auth');if(!_t||Date.now()-_t>14*864e5)location.replace('index.html')}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
+<script src="firebase-config.js"></script><script src="sync.js"></script>
+<script>if(window.rbSync&&rbSync.on)addEventListener("load",function(){rbSync.pushAll();rbSync.anagStart()})</script>
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -437,7 +439,7 @@ function anagImport(name){var T=S.teams[S.tab],all=anagRead().filter(function(x)
 var AK='referto_archivio_v1';
 function archGet(){try{var a=JSON.parse(localStorage.getItem(AK)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function archPut(a){try{localStorage.setItem(AK,JSON.stringify(a));return true}catch(e){return false}}
-function archAdd(){var A=S.teams[0],B=S.teams[1],a=archGet();var gid=Date.now();a.unshift({id:gid,uid:gid+'-'+Math.random().toString(36).slice(2,7),d:new Date().toISOString(),a:A.name,b:B.name,sa:A.score,sb:B.score,html:sheet(),g:gameData()});if(!archPut(a)){a=a.slice(0,Math.max(1,Math.floor(a.length/2)));if(!archPut(a))return false;toast('Archivio pieno: rimossi i referti pi\u00f9 vecchi')}return gid}
+function archAdd(){var A=S.teams[0],B=S.teams[1],a=archGet();var gid=Date.now();a.unshift({id:gid,uid:gid+'-'+Math.random().toString(36).slice(2,7),d:new Date().toISOString(),a:A.name,b:B.name,sa:A.score,sb:B.score,html:sheet(),g:gameData()});if(!archPut(a)){a=a.slice(0,Math.max(1,Math.floor(a.length/2)));if(!archPut(a))return false;toast('Archivio pieno: rimossi i referti pi\u00f9 vecchi')}if(window.rbSync&&rbSync.on)rbSync.pushAll();return gid}
 function gameData(){return{teams:S.teams.map(function(T){return{name:T.name,mine:T.mine?1:0,p:T.p.filter(function(p){return p.on}).map(function(p){return{n:p.n,name:p.name,lic:p.lic||''}})}}),q:S.q,log:S.log.filter(function(e){return!e.void}).map(function(e){var o={t:e.t,n:e.n,txt:e.txt,q:e.q,time:e.time};if(e.pts)o.pts=e.pts;if(e.fl)o.fl=e.fl;if(e.ft)o.ft=e.ft;if(e.sub)o.sub=e.sub;return o})}}
 function sendPc(it){var n=fname(it).replace(/\.pdf$/,'.json'),b=new Blob([JSON.stringify({rb:1,games:[it]})],{type:'application/json'}),file=new File([b],n,{type:'application/json'});
  function dl(){var u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=n;document.body.appendChild(l);l.click();l.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);toast('File scaricato: invialo al PC')}

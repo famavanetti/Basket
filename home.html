@@ -12,8 +12,9 @@
 <button class="btn p" id="install" style="display:none;margin-top:18px" onclick="installa()">⬇ Installa l'app</button>
 <p class="hint" id="ios" style="display:none">Su iPhone: tocca <b>Condividi</b> e poi <b>Aggiungi a schermata Home</b>.</p>
 </div>
-<script src="app.js"></script>
+<script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
 <script>richiediLogin();
-var a=anagGet(),n=function(t){return a.filter(function(x){return x.tipo===t}).length},g=n('giocatore');
-document.getElementById('cnt').textContent=g+' giocatori · '+n('staff')+' staff · '+n('societa')+' società';
+function conta(){var a=anagGet(),n=function(t){return a.filter(function(x){return x.tipo===t}).length},g=n('giocatore');
+document.getElementById('cnt').textContent=g+' giocatori · '+n('staff')+' staff · '+n('societa')+' società'}conta();
+if(window.rbSync&&rbSync.on){rbSync.anagStart(conta);rbSync.pushAll()}
 if(/iphone|ipad/i.test(navigator.userAgent)&&!navigator.standalone)document.getElementById('ios').style.display='block';</script></body></html>
