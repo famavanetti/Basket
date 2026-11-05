@@ -10,11 +10,11 @@
 <select id="fq" onchange="FQ=this.value;render()" style="margin-bottom:10px"></select>
 <div id="list"></div>
 <button class="btn g" onclick="apri()">+ Aggiungi</button>
-<div class="row" style="margin-top:18px"><button class="btn" onclick="esporta()">⬇ Esporta Excel</button><button class="btn" onclick="document.getElementById('imp').click()">⬆ Importa Excel</button></div>
+<div class="row" style="margin-top:18px"><button class="btn" id="bx" onclick="esporta()">⬇ Esporta Excel</button><button class="btn" onclick="document.getElementById('imp').click()">⬆ Importa Excel</button></div>
 <input type="file" id="imp" accept=".xlsx,.xls,.csv" style="display:none" onchange="importa(this)">
 <button class="btn" style="margin-top:8px;color:var(--mu)" onclick="modello()">Scarica modello Excel da compilare</button>
 <button class="btn r" style="margin-top:8px" onclick="svuota()">Svuota anagrafica</button>
-<p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri telefoni o li modifichi al computer.<br>Per usarli in gara: apri il Referto → menu ☰ → <b>Importa da anagrafica</b>.</p>
+<p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri dispositivi. <b>Per dare a un tablet solo una squadra:</b> scegli la squadra nel menu qui sopra e premi Esporta (il file contiene solo quella squadra).<br>Per usarli in gara: apri il Referto → menu ☰ → <b>Importa da anagrafica</b>.</p>
 </div>
 <div class="modal" id="m"><div class="sheet">
 <h2 id="mt" style="margin-bottom:4px">Nuovo</h2>
@@ -49,6 +49,7 @@ function render(){
  if(FQ&&!keys[FQ])FQ='';
  $('fq').innerHTML='<option value="">Tutte le squadre ('+ks.length+')</option>'+ks.map(function(k){return'<option'+(k===FQ?' selected':'')+'>'+esc(k)+'</option>'}).join('');
  $('fq').style.display=T==='societa'?'none':'block';
+ var fq=T==='societa'?'':FQ;$('bx').textContent=fq?'⬇ Esporta solo '+fq:'⬇ Esporta Excel (tutta)';
  var L=A.filter(function(x){return x.tipo===T&&(T==='societa'||!FQ||(lab(x)||'Senza squadra')===FQ)});
  L.sort(function(a,b){var s=lab(a).localeCompare(lab(b));if(s)return s;return T==='giocatore'?(+a.numero||999)-(+b.numero||999):(a.cognome||'').localeCompare(b.cognome||'')});
  $('list').innerHTML=L.length?L.map(function(x){var sub=[T==='societa'?'':lab(x),x.ruolo,x.lic].filter(Boolean).map(esc).join(' · ');return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T!=='giocatore'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):(T==='staff'?'👤':'🏢'))+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+sub+'</small></span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
@@ -78,9 +79,9 @@ function scrivi(rows,nome){if(!window.XLSX)return alert('Libreria Excel non cari
  var ws=XLSX.utils.aoa_to_sheet([COLS].concat(rows));ws['!cols']=[{wch:11},{wch:12},{wch:11},{wch:18},{wch:16},{wch:8},{wch:28},{wch:14}];
  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Anagrafica');XLSX.writeFile(wb,nome)}
 function esporta(){if(!A.length)return alert('L\'anagrafica è vuota.');
- var ord={giocatore:0,staff:1,societa:2};
- var L=A.slice().sort(function(a,b){return((a.tipo==='societa')-(b.tipo==='societa'))||lab(a).localeCompare(lab(b))||(ord[a.tipo]-ord[b.tipo])||((+a.numero||999)-(+b.numero||999))});
- scrivi(righe(L),'anagrafica.xlsx')}
+ var ord={giocatore:0,staff:1,societa:2},fq=T==='societa'?'':FQ,src=fq?A.filter(function(x){return x.tipo!=='societa'&&(lab(x)||'Senza squadra')===fq}):A;
+ var L=src.slice().sort(function(a,b){return((a.tipo==='societa')-(b.tipo==='societa'))||lab(a).localeCompare(lab(b))||(ord[a.tipo]-ord[b.tipo])||((+a.numero||999)-(+b.numero||999))});
+ scrivi(righe(L),fq?'anagrafica_'+fq.replace(/[^A-Za-z0-9]+/g,'_')+'.xlsx':'anagrafica.xlsx')}
 function modello(){scrivi([['Giocatore','U16','Maschile','Rossi','Mario',7,'Guardia','12345678'],['Giocatore','U16','Maschile','Bianchi','Luca',10,'Centro',''],['Staff','U16','Maschile','Verdi','Paolo','','Capo allenatore','98765432'],['Altro','Società','','Neri','Anna','','Segretario','']],'modello_anagrafica.xlsx')}
 var ALIAS={tipo:'tipo',squadra:'squadra',team:'squadra',categoria:'squadra',genere:'genere',sesso:'genere',cognome:'cognome',surname:'cognome',nome:'nome',name:'nome',numero:'numero',n:'numero',nr:'numero',maglia:'numero',nmaglia:'numero',ruolo:'ruolo',posizione:'ruolo',incarico:'ruolo',tessera:'lic',licenza:'lic',cf:'lic',codicefiscale:'lic',ntessera:'lic'};
 function genereDa(g,sq){var s=norm(g);if(s==='m'||s.indexOf('masc')===0||s==='uomo')return'Maschile';if(s==='f'||s.indexOf('femm')===0||s==='donna')return'Femminile';var q=norm(sq);if(q.indexOf('femm')>=0)return'Femminile';if(q.indexOf('masc')>=0)return'Maschile';return''}
