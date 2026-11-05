@@ -141,7 +141,7 @@ function importa(inp){var files=Array.prototype.slice.call(inp.files);if(!files.
     if(!it.uid)it.uid='o'+it.id+'|'+it.a+'|'+it.b+'|'+it.d;
     var old=have[it.uid];if(old&&(old.g||!it.g)){dup++;return}
     have[it.uid]=it;add.push(it);if(!it.g)nog++})});
-  return(add.length?dbPut(add):Promise.resolve()).then(reload).then(function(){
+  return(add.length?dbPut(add):Promise.resolve()).then(reload).then(function(){spingi(add);
    var m='Importate '+add.length+' partite';if(dup)m+=' · già presenti: '+dup;if(nog)m+='\n'+nog+' senza dati per le statistiche (solo referto).';if(bad)m+='\n⚠ '+bad+' file/voci non validi.';alert(m)})
  }).catch(function(){alert('Impossibile salvare le partite in questo browser.')});inp.value=''}
 function scarica(blob,nome){var u=URL.createObjectURL(blob),l=document.createElement('a');l.href=u;l.download=nome;document.body.appendChild(l);l.click();l.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000)}
@@ -156,7 +156,8 @@ function esportaXls(){if(!window.XLSX)return alert('Libreria Excel non caricata:
  w1['!cols']=[{wch:24},{wch:16}].concat(tot[0].slice(2).map(function(){return{wch:11}}));w2['!cols']=[{wch:24},{wch:16},{wch:11},{wch:16},{wch:18}].concat(pg[0].slice(5).map(function(){return{wch:10}}));
  XLSX.utils.book_append_sheet(wb,w1,'Totali');XLSX.utils.book_append_sheet(wb,w2,'Per partita');
  XLSX.writeFile(wb,'statistiche'+(FQ?'_'+FQ.replace(/[^A-Za-z0-9]+/g,'_'):'')+'.xlsx')}
-function unisci(items){var have={};G.forEach(function(g){have[g.uid]=g});var add=[];items.forEach(function(it){if(!it||!it.a||!it.b||!it.d)return;if(!it.uid)it.uid='o'+it.id+'|'+it.a+'|'+it.b+'|'+it.d;var o=have[it.uid];if(o&&(o.g||!it.g))return;have[it.uid]=it;add.push(it)});return add.length?dbPut(add).then(reload):0}
-function cloud(){if(window.rbSync&&rbSync.on){rbSync.watchGames(unisci);rbSync.anagStart(function(){render()})}}
+function unisci(items){var have={};G.forEach(function(g){have[g.uid]=g});var add=[];items.forEach(function(it){if(!it||!it.a||!it.b||!it.d)return;if(!it.uid)it.uid='o'+it.id+'|'+it.a+'|'+it.b+'|'+it.d;var o=have[it.uid];if(o&&(o.g||!it.g))return;it.cl=1;have[it.uid]=it;add.push(it)});return add.length?dbPut(add).then(reload):0}
+function spingi(arr){if(!(window.rbSync&&rbSync.on))return;arr.filter(function(x){return!x.cl}).forEach(function(it){rbSync.pushGame(it).then(function(){it.cl=1;dbPut([it])})})}
+function cloud(){if(window.rbSync&&rbSync.on){spingi(G);rbSync.watchGames(unisci);rbSync.anagStart(function(){render()})}}
 tab('g');dbOpen().then(reload).then(cloud).catch(function(){$('out').innerHTML='<div class="empty">Questo browser non permette di salvare l\'archivio (navigazione privata?).</div>'});
 </script></body></html>
