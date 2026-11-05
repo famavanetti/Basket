@@ -85,7 +85,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2
 .modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
 .modal .box{background:var(--pan);border-radius:10px;padding:18px;max-width:420px;width:100%;max-height:80%;overflow:auto}
 .modal h3{margin-bottom:12px}
-.modal .mh{font-size:11px;letter-spacing:.1em;color:#8d96bd;text-transform:uppercase;font-weight:700;margin:14px 2px 6px}.nav2{display:flex;gap:8px;margin-bottom:2px}.nav2 .opt{flex:1;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;margin:0;padding:14px 8px}
+.modal .msec{font-size:11px;letter-spacing:.1em;color:#8d96bd;text-transform:uppercase;font-weight:700;margin:12px 2px 5px}.nav2{display:flex;gap:8px;margin-bottom:2px}.nav2 .opt{flex:1;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;margin:0;padding:14px 8px}
 .opt{display:flex;width:100%;gap:12px;padding:12px;margin-bottom:6px;background:var(--row);border-radius:6px;text-align:left;font-weight:600}
 .toc{color:#ffe600!important;font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#fff;color:#000;padding:12px 18px;border-radius:6px;font-weight:600;z-index:9}
@@ -199,6 +199,22 @@ canvas.sg{width:100%;height:220px;background:#eff0f5;border-radius:4px;touch-act
 #help .n{flex:none;width:24px;height:24px;border-radius:50%;background:#ff2d55;color:#fff;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;margin-top:1px}
 #help table.qt{width:100%;border-collapse:collapse;margin:10px 0}#help .qt th,#help .qt td{border:1px solid #2a3570;padding:8px 10px;text-align:left}#help .qt th{background:#232c5c}
 @media print{body.hp #app,body.hp .modal,body.hp .toast{display:none!important}body.hp #help{position:static;display:block;background:#fff;color:#111}body.hp #help .hh,body.hp #help .hn{display:none}body.hp #help .hb{overflow:visible}body.hp #help h3{color:#333}body.hp #help figure{background:#fff;border:1px solid #ccc;break-inside:avoid}body.hp #help .qt th{background:#eee}body.hp html,body.hp{height:auto}}
+
+.box:has(.msec) .opt{padding:9px 12px;margin-bottom:5px;font-size:14px;border-radius:5px}
+.box:has(.msec) .nav2 .opt{padding:9px 8px;font-size:13px;margin:0}
+.box:has(.msec) h3{font-size:17px;margin-bottom:8px}
+/* intestazione tabellone: su tablet tutto in una riga, scalato in base alla larghezza */
+@media(min-width:700px) and (max-width:1499px){
+ .sb{flex-wrap:nowrap;font-size:clamp(8px,1.2vw,16px);gap:.8em;padding:.5em .8em;justify-content:center}
+ .sb .ham{position:static;transform:none;width:auto;flex:none;font-size:1.7em;padding:.1em .3em}
+ .sb .play{position:static;transform:none;width:auto;flex:none;min-width:7em;height:2.8em;padding:0 1em;font-size:1.1em}
+ .sb .sc{font-size:2.75em;min-width:1.6em;padding:0 .3em}
+ .sb .clk{font-size:3.375em;min-width:2.4em;letter-spacing:0}
+ .sb .arw{font-size:1.875em;padding:.15em .45em;gap:.3em}
+ .sb .tfq i{width:1em;height:1.6em}
+ .sb .tfq b{font-size:.9em}
+ .sb .mini button.toc{font-size:1.6em;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -396,7 +412,7 @@ function modalView(){
  if(m.k=='confirmEdit'){h+='<div class="mb" style="text-align:center"><h3 style="font-size:22px;margin:10px 0 8px">Sei sicuro di volerlo cambiare?</h3><p>Il roster è già confermato. Se vuoi modificarlo, il coach deve firmare di nuovo.</p></div><div style="display:flex;gap:10px;padding:0 18px 18px"><button class="opt" style="background:#eff0f5;color:#111;justify-content:center;margin:0" data-a="close">Torna indietro</button><button class="sv" style="flex:1;border-radius:6px" data-a="doEdit">Accetta</button></div>'}
  if(m.k=='wipe'){h+='<h3 class="qt" style="color:#ff6b6b">Azzera e ricomincia da capo</h3><p style="text-align:center;margin:-10px 0 16px">Il referto in corso viene cancellato e non si può recuperare. L’archivio dei referti già chiusi non viene toccato.</p><button class="opt" data-a="wipeDo" data-v="game"><span style="flex:1;text-align:left">Azzera la partita, tieni squadre e roster<br><small>Punteggio, registro, falli, timeout e cronometro tornano a zero. Si riparte dalla schermata roster.</small></span></button><button class="opt" data-a="wipeDo" data-v="all" style="background:#b3261e;color:#fff"><span style="flex:1;text-align:left">Cancella tutto, roster compresi<br><small>Anche squadre, giocatori, staff, ufficiali, note e firme tornano come all’inizio.</small></span></button><button class="opt" data-a="close">Annulla</button>'}
  if(m.k=='anag'){var sqs=anagSq(anagRead());h+='<h3>Importa da anagrafica</h3><p style="color:var(--mu);margin-bottom:12px">Verrà caricata nella <b>squadra '+(S.tab?'B':'A')+'</b>: sostituisce giocatori e staff attuali.</p>';if(!sqs.length)h+='<p style="margin-bottom:12px">L\'anagrafica è vuota: compilala prima dalla pagina Anagrafica.</p>';sqs.forEach(function(q,i){h+='<button class="opt" data-a="anagDo" data-v="'+i+'">'+esc(q.n)+' <small style="color:var(--mu)">· '+q.g+' giocatori · '+q.s+' staff</small></button>'});h+='<button class="opt" data-a="goAnag">Apri Anagrafica</button><button class="opt" data-a="close">Chiudi</button>'}
- if(m.k=='menu'){var H=function(t){return'<div class="mh">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
+ if(m.k=='menu'){var H=function(t){return'<div class="msec">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
  h+='<h3>Menu</h3><div class="nav2">'+B('goHome','<span style="font-size:24px;line-height:1">\u2302</span>Home')+B('goAnag','<span style="font-size:24px;line-height:1">\ud83d\udc65</span>Anagrafica')+'</div>';
  if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica');
  h+=H('Referto')+B('help','\ud83d\udcd6 Istruzioni')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''));
