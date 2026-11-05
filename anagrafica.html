@@ -6,21 +6,23 @@
 <link rel="stylesheet" href="app.css"></head><body>
 <div class="bar"><a href="home.html">← Home</a><h1>Anagrafica</h1><a href="referto.html">Referto →</a></div>
 <div class="wrap">
-<div class="tabs"><button id="t-giocatore" onclick="tab('giocatore')">Giocatori</button><button id="t-staff" onclick="tab('staff')">Staff</button></div>
+<div class="tabs"><button id="t-giocatore" onclick="tab('giocatore')">Giocatori</button><button id="t-staff" onclick="tab('staff')">Staff</button><button id="t-societa" onclick="tab('societa')">Società</button></div>
+<select id="fq" onchange="FQ=this.value;render()" style="margin-bottom:10px"></select>
 <div id="list"></div>
 <button class="btn g" onclick="apri()">+ Aggiungi</button>
 <div class="row" style="margin-top:18px"><button class="btn" onclick="esporta()">⬇ Esporta Excel</button><button class="btn" onclick="document.getElementById('imp').click()">⬆ Importa Excel</button></div>
 <input type="file" id="imp" accept=".xlsx,.xls,.csv" style="display:none" onchange="importa(this)">
 <button class="btn" style="margin-top:8px;color:var(--mu)" onclick="modello()">Scarica modello Excel da compilare</button>
 <button class="btn r" style="margin-top:8px" onclick="svuota()">Svuota anagrafica</button>
-<p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri telefoni o li modifichi al computer.<br>Per usarli in gara: apri il Referto → menu ⋮ → <b>Importa da anagrafica</b>.</p>
+<p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri telefoni o li modifichi al computer.<br>Per usarli in gara: apri il Referto → menu ☰ → <b>Importa da anagrafica</b>.</p>
 </div>
 <div class="modal" id="m"><div class="sheet">
 <h2 id="mt" style="margin-bottom:4px">Nuovo</h2>
-<label>Squadra (es. U16 Gold)</label><input id="squadra" list="sq" autocomplete="off"><datalist id="sq"></datalist>
+<div id="f-sq" class="row"><div><label>Squadra (es. U16)</label><input id="squadra" list="sq" autocomplete="off"><datalist id="sq"></datalist></div><div><label>Genere</label><select id="genere"><option value="">Scegli…</option><option>Maschile</option><option>Femminile</option></select></div></div>
 <div class="row"><div><label>Cognome</label><input id="cognome"></div><div><label>Nome</label><input id="nome"></div></div>
-<div id="f-g" class="row"><div><label>N° maglia</label><input id="numero" type="number" min="0" max="99" inputmode="numeric"></div><div><label>Ruolo</label><select id="ruolo-g"><option value="">—</option><option>Playmaker</option><option>Guardia</option><option>Ala piccola</option><option>Ala grande</option><option>Centro</option></select></div></div>
+<div id="f-g" class="row"><div><label>N° maglia</label><input id="numero" type="number" min="0" max="99" inputmode="numeric"></div><div><label>Ruolo</label><select id="ruolo-g"></select></div></div>
 <div id="f-s"><label>Ruolo</label><select id="ruolo-s"></select></div>
+<div id="f-o"><label>Ruolo / Incarico</label><input id="ruolo-o" list="ro" autocomplete="off"><datalist id="ro"></datalist></div>
 <label>N° tessera / CF</label><input id="lic">
 <div class="row" style="margin-top:16px"><button class="btn" onclick="chiudi()">Annulla</button><button class="btn p" onclick="salva()">Salva</button></div>
 <button class="btn r" id="del" style="margin-top:8px" onclick="elimina()">Elimina</button>
@@ -29,54 +31,80 @@
 <script src="xlsx.full.min.js"></script>
 <script>
 richiediLogin();
-var T='giocatore',ED=null,A=anagGet();
-var RUOLI_STAFF=['Capo allenatore','Assistente allenatore','2° assistente all.re','3° assistente all.re','Accompagnatore','Addetto agli arbitri','Preparatore fisico','Medico'];
+var T='giocatore',ED=null,FQ='',A=anagGet();
+var RUOLI_STAFF=['Capo allenatore','Assistente allenatore','2° assistente all.re','3° assistente all.re','Preparatore atletico','Accompagnatore','Addetto agli arbitri','Medico'];
 var RUOLI_G=['Playmaker','Guardia','Ala piccola','Ala grande','Centro'];
+var RUOLI_SOC=['Presidente','Vicepresidente','Direttore sportivo','Responsabile settore giovanile','Segretario','Team manager','Medico sociale','Fisioterapista','Addetto stampa','Addetto al referto'];
+var ETI={giocatore:'Giocatore',staff:'Staff',societa:'Altro'};
 function $(i){return document.getElementById(i)}
-$('ruolo-s').innerHTML=RUOLI_STAFF.map(function(r){return'<option>'+esc(r)+'</option>'}).join('');
+function norm(s){return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function lab(x){return[x.squadra,x.genere].filter(Boolean).join(' ')}
+function opts(sel,list,vuoto){sel.innerHTML=(vuoto?'<option value="">—</option>':'')+list.map(function(r){return'<option>'+esc(r)+'</option>'}).join('')}
+function setSel(sel,list,val,vuoto){opts(sel,list,vuoto);if(val&&list.indexOf(val)<0){var o=document.createElement('option');o.textContent=val;sel.appendChild(o)}sel.value=val||(vuoto?'':list[0])}
+function canon(list,r){var n=norm(r);for(var i=0;i<list.length;i++)if(norm(list[i])===n)return list[i];return null}
 function squadre(){var s={};A.forEach(function(x){if(x.squadra)s[x.squadra]=1});return Object.keys(s).sort()}
-function tab(t){T=t;$('t-giocatore').className=t==='giocatore'?'on':'';$('t-staff').className=t==='staff'?'on':'';render()}
-function render(){var L=A.filter(function(x){return x.tipo===T});
- L.sort(function(a,b){var s=(a.squadra||'').localeCompare(b.squadra||'');if(s)return s;return T==='giocatore'?(+a.numero||999)-(+b.numero||999):(a.cognome||'').localeCompare(b.cognome||'')});
- $('list').innerHTML=L.length?L.map(function(x){var sub=[x.squadra,x.ruolo,x.lic].filter(Boolean).map(esc).join(' · ');return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T==='staff'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):'👤')+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+sub+'</small></span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
-function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED||{tipo:T};
- $('mt').textContent=ED?'Modifica':(T==='giocatore'?'Nuovo giocatore':'Nuovo staff');
+function tab(t){T=t;['giocatore','staff','societa'].forEach(function(k){$('t-'+k).className=t===k?'on':''});render()}
+function render(){
+ var keys={};A.forEach(function(x){if(x.tipo!=='societa')keys[lab(x)||'Senza squadra']=1});var ks=Object.keys(keys).sort();
+ if(FQ&&!keys[FQ])FQ='';
+ $('fq').innerHTML='<option value="">Tutte le squadre ('+ks.length+')</option>'+ks.map(function(k){return'<option'+(k===FQ?' selected':'')+'>'+esc(k)+'</option>'}).join('');
+ $('fq').style.display=T==='societa'?'none':'block';
+ var L=A.filter(function(x){return x.tipo===T&&(T==='societa'||!FQ||(lab(x)||'Senza squadra')===FQ)});
+ L.sort(function(a,b){var s=lab(a).localeCompare(lab(b));if(s)return s;return T==='giocatore'?(+a.numero||999)-(+b.numero||999):(a.cognome||'').localeCompare(b.cognome||'')});
+ $('list').innerHTML=L.length?L.map(function(x){var sub=[T==='societa'?'':lab(x),x.ruolo,x.lic].filter(Boolean).map(esc).join(' · ');return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T!=='giocatore'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):(T==='staff'?'👤':'🏢'))+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+sub+'</small></span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
+function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED||{tipo:T},t=x.tipo;
+ $('mt').textContent=ED?'Modifica':(t==='giocatore'?'Nuovo giocatore':t==='staff'?'Nuovo staff':'Nuova persona della società');
  $('sq').innerHTML=squadre().map(function(s){return'<option value="'+esc(s)+'">'}).join('');
- $('squadra').value=x.squadra||(ED?'':(squadre()[0]||''));
- $('f-g').style.display=x.tipo==='giocatore'?'flex':'none';$('f-s').style.display=x.tipo==='staff'?'block':'none';
+ $('ro').innerHTML=RUOLI_SOC.map(function(s){return'<option value="'+esc(s)+'">'}).join('');
+ $('f-sq').style.display=t==='societa'?'none':'flex';$('f-g').style.display=t==='giocatore'?'flex':'none';$('f-s').style.display=t==='staff'?'block':'none';$('f-o').style.display=t==='societa'?'block':'none';
+ $('squadra').value=x.squadra||(ED?'':(FQ?'':'')) ;$('genere').value=x.genere||'';
+ if(!ED&&FQ){var q=A.filter(function(y){return y.tipo!=='societa'&&lab(y)===FQ})[0];if(q){$('squadra').value=q.squadra||'';$('genere').value=q.genere||''}}
  $('cognome').value=x.cognome||'';$('nome').value=x.nome||'';$('numero').value=x.numero||'';$('lic').value=x.lic||'';
- $('ruolo-g').value=x.tipo==='giocatore'?(x.ruolo||''):'';$('ruolo-s').value=x.tipo==='staff'?(RUOLI_STAFF.indexOf(x.ruolo)>=0?x.ruolo:RUOLI_STAFF[0]):RUOLI_STAFF[0];
+ setSel($('ruolo-g'),RUOLI_G,t==='giocatore'?x.ruolo:'',true);setSel($('ruolo-s'),RUOLI_STAFF,t==='staff'?x.ruolo:'',false);$('ruolo-o').value=t==='societa'?(x.ruolo||''):'';
  $('del').style.display=ED?'block':'none';$('m').className='modal on'}
 function chiudi(){$('m').className='modal'}
-function salva(){var c=$('cognome').value.trim(),n=$('nome').value.trim();if(!c&&!n){$('cognome').focus();return}
- var tipo=ED?ED.tipo:T,o={id:ED?ED.id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),tipo:tipo,squadra:$('squadra').value.trim(),cognome:c,nome:n,lic:$('lic').value.trim(),
-  numero:tipo==='giocatore'?$('numero').value:'',ruolo:tipo==='giocatore'?$('ruolo-g').value:$('ruolo-s').value};
+function salva(){var c=$('cognome').value.trim(),n=$('nome').value.trim(),tipo=ED?ED.tipo:T;if(!c&&!n){$('cognome').focus();return}
+ if(tipo!=='societa'){if(!$('squadra').value.trim()){$('squadra').focus();return alert('Indica la squadra (es. U16).')}if(!$('genere').value){$('genere').focus();return alert('Indica se la squadra è Maschile o Femminile.')}}
+ var o={id:ED?ED.id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),tipo:tipo,squadra:tipo==='societa'?'':$('squadra').value.trim(),genere:tipo==='societa'?'':$('genere').value,cognome:c,nome:n,lic:$('lic').value.trim(),
+  numero:tipo==='giocatore'?$('numero').value:'',ruolo:tipo==='giocatore'?$('ruolo-g').value:tipo==='staff'?$('ruolo-s').value:$('ruolo-o').value.trim()};
  A=ED?A.map(function(x){return x.id===o.id?o:x}):A.concat(o);anagPut(A);chiudi();render()}
 function elimina(){if(ED&&confirm('Eliminare '+ED.cognome+' '+ED.nome+'?')){A=A.filter(function(x){return x.id!==ED.id});anagPut(A);chiudi();render()}}
 function svuota(){if(A.length&&confirm('Eliminare TUTTA l\'anagrafica ('+A.length+' persone)? Esporta prima un file Excel se vuoi tenerne una copia.')){A=[];anagPut(A);render()}}
 
 /* ---------- Excel ---------- */
-var COLS=['Tipo','Squadra','Cognome','Nome','Numero','Ruolo','Tessera'];
-function righe(L){return L.map(function(x){return[x.tipo==='staff'?'Staff':'Giocatore',x.squadra||'',x.cognome||'',x.nome||'',x.tipo==='giocatore'&&x.numero!==''?(+x.numero||''):'',x.ruolo||'',x.lic||'']})}
+var COLS=['Tipo','Squadra','Genere','Cognome','Nome','Numero','Ruolo','Tessera'];
+function righe(L){return L.map(function(x){var so=x.tipo==='societa';return[ETI[x.tipo]||'Giocatore',so?'Società':(x.squadra||''),so?'':(x.genere||''),x.cognome||'',x.nome||'',x.tipo==='giocatore'&&x.numero!==''?(+x.numero||''):'',x.ruolo||'',x.lic||'']})}
 function scrivi(rows,nome){if(!window.XLSX)return alert('Libreria Excel non caricata: serve internet la prima volta.');
- var ws=XLSX.utils.aoa_to_sheet([COLS].concat(rows));ws['!cols']=[{wch:11},{wch:18},{wch:18},{wch:16},{wch:8},{wch:22},{wch:16}];
+ var ws=XLSX.utils.aoa_to_sheet([COLS].concat(rows));ws['!cols']=[{wch:11},{wch:12},{wch:11},{wch:18},{wch:16},{wch:8},{wch:28},{wch:14}];
  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Anagrafica');XLSX.writeFile(wb,nome)}
 function esporta(){if(!A.length)return alert('L\'anagrafica è vuota.');
- var L=A.slice().sort(function(a,b){return(a.tipo===b.tipo?0:a.tipo==='giocatore'?-1:1)||(a.squadra||'').localeCompare(b.squadra||'')||((+a.numero||999)-(+b.numero||999))});
+ var ord={giocatore:0,staff:1,societa:2};
+ var L=A.slice().sort(function(a,b){return((a.tipo==='societa')-(b.tipo==='societa'))||lab(a).localeCompare(lab(b))||(ord[a.tipo]-ord[b.tipo])||((+a.numero||999)-(+b.numero||999))});
  scrivi(righe(L),'anagrafica.xlsx')}
-function modello(){scrivi([['Giocatore','U16 Gold','Rossi','Mario',7,'Guardia','12345678'],['Giocatore','U16 Gold','Bianchi','Luca',10,'Centro',''],['Staff','U16 Gold','Verdi','Paolo','','Capo allenatore','98765432']],'modello_anagrafica.xlsx')}
-function norm(s){return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,'')}
-var ALIAS={tipo:'tipo',categoria:'tipo',squadra:'squadra',team:'squadra',cognome:'cognome',surname:'cognome',nome:'nome',name:'nome',numero:'numero',n:'numero',nr:'numero',maglia:'numero',nmaglia:'numero',ruolo:'ruolo',posizione:'ruolo',tessera:'lic',licenza:'lic',cf:'lic',codicefiscale:'lic',ntessera:'lic'};
+function modello(){scrivi([['Giocatore','U16','Maschile','Rossi','Mario',7,'Guardia','12345678'],['Giocatore','U16','Maschile','Bianchi','Luca',10,'Centro',''],['Staff','U16','Maschile','Verdi','Paolo','','Capo allenatore','98765432'],['Altro','Società','','Neri','Anna','','Segretario','']],'modello_anagrafica.xlsx')}
+var ALIAS={tipo:'tipo',squadra:'squadra',team:'squadra',categoria:'squadra',genere:'genere',sesso:'genere',cognome:'cognome',surname:'cognome',nome:'nome',name:'nome',numero:'numero',n:'numero',nr:'numero',maglia:'numero',nmaglia:'numero',ruolo:'ruolo',posizione:'ruolo',incarico:'ruolo',tessera:'lic',licenza:'lic',cf:'lic',codicefiscale:'lic',ntessera:'lic'};
+function genereDa(g,sq){var s=norm(g);if(s==='m'||s.indexOf('masc')===0||s==='uomo')return'Maschile';if(s==='f'||s.indexOf('femm')===0||s==='donna')return'Femminile';var q=norm(sq);if(q.indexOf('femm')>=0)return'Femminile';if(q.indexOf('masc')>=0)return'Maschile';return''}
+var RUOLO_ALIAS={allenatore:'Capo allenatore',vice:'Assistente allenatore',viceallenatore:'Assistente allenatore',assistente:'Assistente allenatore',preparatorefisico:'Preparatore atletico',preparatore:'Preparatore atletico'};
 function importa(inp){var f=inp.files[0];if(!f)return;if(!window.XLSX){inp.value='';return alert('Libreria Excel non caricata: serve internet la prima volta.')}
  var r=new FileReader();r.onload=function(){try{
-  var wb=XLSX.read(r.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''}),out=[];
+  var wb=XLSX.read(r.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''}),out=[],senzaG=0;
   rows.forEach(function(row){var o={};Object.keys(row).forEach(function(k){var a=ALIAS[norm(k)];if(a)o[a]=String(row[k]).trim()});
    if(!o.cognome&&!o.nome)return;
-   var t=norm(o.tipo),tipo=t.indexOf('staff')===0||t.indexOf('allen')===0||t.indexOf('dirig')===0?'staff':t.indexOf('giocat')===0?'giocatore':(o.numero?'giocatore':(RUOLI_G.indexOf(o.ruolo)>=0||!o.ruolo?'giocatore':'staff'));
-   out.push({id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+out.length,tipo:tipo,squadra:o.squadra||'',cognome:o.cognome||'',nome:o.nome||'',numero:tipo==='giocatore'?(o.numero||''):'',ruolo:o.ruolo||'',lic:o.lic||''})});
+   var t=norm(o.tipo),sq=norm(o.squadra),tipo;
+   if(t==='altro'||t.indexOf('societ')===0||t==='dirigenza'||sq==='societa')tipo='societa';
+   else if(t.indexOf('staff')===0||t.indexOf('allen')===0||t.indexOf('tecnic')===0)tipo='staff';
+   else if(t.indexOf('giocat')===0||t.indexOf('atlet')===0)tipo='giocatore';
+   else tipo=o.numero||!o.ruolo||canon(RUOLI_G,o.ruolo)?'giocatore':'staff';
+   var ruolo=o.ruolo||'';
+   if(tipo==='giocatore')ruolo=canon(RUOLI_G,ruolo)||ruolo;
+   else if(tipo==='staff')ruolo=canon(RUOLI_STAFF,ruolo)||RUOLO_ALIAS[norm(ruolo)]||ruolo;
+   else ruolo=canon(RUOLI_SOC,ruolo)||ruolo;
+   var gen=tipo==='societa'?'':genereDa(o.genere,o.squadra);if(tipo!=='societa'&&!gen)senzaG++;
+   out.push({id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+out.length,tipo:tipo,squadra:tipo==='societa'?'':(o.squadra||''),genere:gen,cognome:o.cognome||'',nome:o.nome||'',numero:tipo==='giocatore'?(o.numero||''):'',ruolo:ruolo,lic:o.lic||''})});
   if(!out.length)return alert('Nessuna riga valida. Servono almeno le colonne Cognome e Nome (usa il modello).');
-  var k=function(x){return[x.tipo,norm(x.squadra),norm(x.cognome),norm(x.nome)].join('|')},agg=0,upd=0,idx={};A.forEach(function(x,i){idx[k(x)]=i});
-  if(!confirm('Trovate '+out.length+' persone nel file.\nVengono aggiunte all\'anagrafica (chi c\'è già viene aggiornato).\nProcedere?'))return;
+  var k=function(x){return[x.tipo,norm(x.squadra),norm(x.genere),norm(x.cognome),norm(x.nome)].join('|')},agg=0,upd=0,idx={};A.forEach(function(x,i){idx[k(x)]=i});
+  var c=function(t){return out.filter(function(x){return x.tipo===t}).length};
+  if(!confirm('Trovate '+out.length+' persone: '+c('giocatore')+' giocatori, '+c('staff')+' staff, '+c('societa')+' società.'+(senzaG?'\n⚠ '+senzaG+' righe senza Genere (Maschile/Femminile): da completare.':'')+'\nVengono aggiunte all\'anagrafica (chi c\'è già viene aggiornato).\nProcedere?'))return;
   out.forEach(function(x){var i=idx[k(x)];if(i!==undefined){x.id=A[i].id;A[i]=x;upd++}else{idx[k(x)]=A.push(x)-1;agg++}});
   anagPut(A);render();alert('Importazione completata: '+agg+' nuovi, '+upd+' aggiornati.')
  }catch(e){alert('Impossibile leggere il file. Usa un file Excel (.xlsx, .xls) o CSV.')}inp.value=''};r.readAsArrayBuffer(f)}

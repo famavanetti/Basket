@@ -13,6 +13,6 @@
 </div>
 <script src="app.js"></script>
 <script>richiediLogin();
-var a=anagGet(),g=a.filter(function(x){return x.tipo==='giocatore'}).length;
-document.getElementById('cnt').textContent=g+' giocatori · '+(a.length-g)+' staff';
+var a=anagGet(),n=function(t){return a.filter(function(x){return x.tipo===t}).length},g=n('giocatore');
+document.getElementById('cnt').textContent=g+' giocatori · '+n('staff')+' staff · '+n('societa')+' società';
 if(/iphone|ipad/i.test(navigator.userAgent)&&!navigator.standalone)document.getElementById('ios').style.display='block';</script></body></html>
