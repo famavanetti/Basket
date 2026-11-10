@@ -92,18 +92,23 @@ S.scPush=function(){if(!SK||!scSynced)return Promise.resolve();
    if(SCL[k]!==sg){SCL[k]=sg;jobs.push(Promise.all([sid(k),senc(SK,{k:k,n:e.n||'',v:e.v||'',t:e.t||''})]).then(function(r){return c.doc(r[0]).set({iv:r[1].iv,ct:r[1].ct,del:0,u:now})}))}});
   Object.keys(SCL).forEach(function(k){var e=cur[k];if((!e||!(e.n||e.v||e.t))&&SCL[k]!==null){SCL[k]=null;jobs.push(sid(k).then(function(i){return c.doc(i).set({del:1,u:now})}))}});
   return Promise.all(jobs)}).catch(function(){})};
+function scGetMeta(n){return db.collection('scadenze').doc('meta').get({source:'server'}).catch(function(e){var m=String(e&&e.message||'');
+ if(n>0&&e&&(e.code==='unavailable'||/offline/i.test(m)))return new Promise(function(r){setTimeout(r,1500)}).then(function(){return scGetMeta(n-1)});throw e})}
 /* attiva su questo dispositivo: con un codice gia' esistente si unisce; se non esiste ancora serve crearlo (pass2 = ripetizione) */
 S.scEnable=function(pass,pass2){
  if(!window.crypto||!crypto.subtle)return Promise.reject(new Error('Questo browser non supporta la cifratura (serve https).'));
  if(!pass)return Promise.reject(new Error('Inserisci il codice.'));
- return init().then(function(){return db.collection('scadenze').doc('meta').get({source:'server'})},function(){throw new Error('Sincronizzazione online non disponibile.')})
+ return init().then(function(){return scGetMeta(3)},function(){throw new Error('Sincronizzazione online non disponibile.')})
  .then(function(m){
   if(m.exists){var d=m.data();return sder(pass,ub64(d.salt)).then(function(k){return sdec(k,d.chk).then(function(){return skSet(k,d.kid)},function(){throw new Error('Codice errato.')})}).then(function(){scListen();return'joined'})}
   if(pass2===undefined)throw new Error('NUOVO');
   if(String(pass).length<12)throw new Error('Il codice deve avere almeno 12 caratteri.');
   if(pass!==pass2)throw new Error('I due codici non coincidono.');
   return scMeta(pass).then(function(r){return db.collection('scadenze').doc('meta').set(r.meta).then(function(){return skSet(r.key,r.kid)})}).then(function(){scListen();return'created'})
- },function(e){if(e&&e.message&&e.message!=='NUOVO'&&!/Codice|codice|Sincroniz|browser/.test(e.message))throw new Error('Serve la connessione internet per attivare.');throw e})};
+ },function(e){var c=e&&e.code,m=String(e&&e.message||'');if(/^Sincroniz|^Questo browser|^Inserisci/.test(m))throw e;
+  if(c==='permission-denied')throw new Error('Firebase rifiuta l\'accesso alla collezione "scadenze": pubblica le regole aggiornate (con scadenze) e controlla che l\'email nelle regole sia quella dell\'account staff.');
+  if(c==='unavailable'||c==='deadline-exceeded'||/offline/i.test(m))throw new Error('Firestore non raggiungibile ('+(c||'offline')+'): controlla internet, VPN o blocco pubblicità e riprova.');
+  throw new Error('Errore Firebase'+(c?' ('+c+')':'')+': '+m.slice(0,120))})};
 /* cambia il codice: ricifra tutto con una nuova chiave; gli altri dispositivi dovranno reinserire il codice */
 S.scChange=function(pass,pass2){
  if(!SK)return Promise.reject(new Error('Prima attiva la sincronizzazione.'));
