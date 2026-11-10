@@ -313,6 +313,39 @@ function toCheck(k){var q=S.q,p=per(q),L=S.log.filter(function(e){return!e.void&
  return null}
 function txc(c){return(c=='#ffffff'||c=='#ffdf3a'||c=='#9a9ba0')?'#000':'#fff'}
 
+/* ---------- minutaggio obbligatorio ---------- */
+var MQ_KEY='rb_minq_v1';
+var MQK=[['U14M','U14 Maschile'],['U14F','U14 Femminile'],['U15','U15'],['U16','U16'],['U17','U17'],['U19','U19']];
+function mqCfg(){try{var c=JSON.parse(localStorage.getItem(MQ_KEY)||'{}');return c&&typeof c==='object'?c:{}}catch(e){return{}}}
+function mqCat(name){var n=String(name||''),m=/U\s*-?\s*(14|15|16|17|19)(?!\d)/i.exec(n)||/under\s*-?\s*(14|15|16|17|19)(?!\d)/i.exec(n);if(!m)return null;
+ if(m[1]=='14')return/femm|\bf\b/i.test(n)?'U14F':'U14M';return'U'+m[1]}
+function mqPlayed(k){var P={},on={},c={};S.teams[k].p.forEach(function(p){if(p.on){P[p.n]={};c[p.n]={t1:0,u1:0,f2:0,f:0}}});
+ function mark(n,q){if(P[n]&&q<=4)P[n][q]=1}
+ S.log.forEach(function(e){if(e.void)return;
+  if(/^Inizio quarto/.test(e.txt||'')){Object.keys(on).forEach(function(n){mark(n,e.q)});return}
+  if(e.t!==k)return;var n=e.n;
+  if(e.txt==='Cambio in'){on[n]=1;mark(n,e.q)}
+  else if(e.txt==='Cambio out'){delete on[n]}
+  else if(e.txt==='Cambio'&&e.sub){delete on[e.sub.o];on[e.sub.i]=1;mark(e.sub.i,e.q)}
+  if(e.pts)mark(n,e.q);
+  if(e.fl){mark(n,e.q);var x=c[n];if(x){if(e.fl!=='T2'&&e.fl!=='R'&&e.fl!=='E')x.f++;if(e.fl==='T')x.t1++;if(e.fl==='U'||e.fl==='DI')x.u1++;if(e.fl==='FL'||e.fl==='D')x.f2++;
+   if(e.fl==='R'||e.fl==='E'||x.f>=5||x.t1>=2||x.u1>=2||(x.t1&&x.u1)||x.f2)delete on[n]}}
+ });
+ return P}
+function mqHtml(final){var cfg=mqCfg(),q=Math.min(S.q,4),rem=final?0:Math.max(0,4-q),h='';
+ [0,1].forEach(function(k){var T=S.teams[k],key=mqCat(T.name),N=key?(+cfg[key]||0):0;if(!N)return;
+  var P=mqPlayed(k),rows='';
+  T.p.forEach(function(p){if(!p.on)return;var cnt=Object.keys(P[p.n]||{}).length,need=N-cnt;if(need<=0)return;
+   var auto=p.dq||p.f>=5,ex=S.mqEx&&S.mqEx[k+':'+p.n],col,txt;
+   if(auto){col='#888';txt=p.dq?'espulso':'5 falli'}
+   else if(ex){col='#888';txt='esente (tocca per riattivare)'}
+   else if(need>rem){col='#c21f2b';txt=final?'minimo non raggiunto':'minimo non più raggiungibile'}
+   else if(need==rem){col='#c25e00';txt='deve giocare tutti i quarti rimasti'}
+   else{col='#555';txt='mancano '+need+' quarti'}
+   rows+='<button style="display:flex;justify-content:space-between;gap:10px;width:100%;padding:7px 4px;border-bottom:1px solid #eee;text-align:left;color:'+col+';font-weight:600"'+(auto?'':' data-a="mqEx" data-t="'+k+'" data-v="'+p.n+'"')+'><span>N° '+p.n+' '+esc(p.name)+'</span><span>'+cnt+'/'+N+' · '+txt+'</span></button>'});
+  h+='<div style="margin-bottom:10px"><b>Minutaggio '+esc(T.name)+' (minimo '+N+' quarti)</b>'+(rows||'<div style="color:#18a558;font-weight:600;padding:6px 0">Tutti hanno raggiunto il minimo ✓</div>')+'</div>'});
+ return h?'<div style="text-align:left;margin:-14px 0 18px;max-height:34vh;overflow:auto;font-size:14px">'+h+'<div style="color:#777;font-size:12px">Conta chi è in campo anche solo per parte del quarto. Tocca un nome per segnarlo esente (es. infortunio). L’avviso non blocca nulla.</div></div>':''}
+
 /* ---------- setup ---------- */
 function setupView(){
  var h='<div class="top">',i;
@@ -370,8 +403,8 @@ function gameView(){
 
 function modalView(){
  var m=S.modal;if(!m)return'';var h='<div class="modal" data-a="close"><div class="box'+(m.k=='endq'||m.k=='prevq'||m.k=='endg'||m.k=='endconf'?' qc':'')+(m.k=='endscr'?' full':'')+'" data-a="stop">';
- if(m.k=='endq')h+='<h3 class="qt">Vuoi terminare il '+(S.q>4?'supplementare '+(S.q-4):'quarto '+S.q)+'?</h3><div class="qb"><button class="qb1" data-a="close">Torna indietro</button><button class="qb2" data-a="nextqOk">Accetta</button></div>';
- if(m.k=='endg'){var gA=S.teams[0],gB=S.teams[1],tie=gA.score==gB.score,on=S.q>4?S.q-3:1;h+='<h3 class="qt">La partita è finita'+(tie?' in parità':'')+'<br>'+(tie?'Si va al supplementare '+on:'Vuoi terminare la partita?')+'</h3><div class="eg"><div class="ea" style="background:'+gA.color+';color:'+txc(gA.color)+'">'+esc(gA.name)+'</div><div class="es">'+gA.score+'</div><div class="es">'+gB.score+'</div><div class="eb" style="background:'+gB.color+';color:'+txc(gB.color)+'">'+esc(gB.name)+'</div></div><div class="qb"><button class="qb1" data-a="close">Torna indietro</button>'+(tie?'<button class="qb2" data-a="nextqOk">Avvia supplementare '+on+'</button>':'<button class="qb2" data-a="finalOk">Termina</button>')+'</div>'}
+ if(m.k=='endq')h+='<h3 class="qt">Vuoi terminare il '+(S.q>4?'supplementare '+(S.q-4):'quarto '+S.q)+'?</h3>'+mqHtml()+'<div class="qb"><button class="qb1" data-a="close">Torna indietro</button><button class="qb2" data-a="nextqOk">Accetta</button></div>';
+ if(m.k=='endg'){var gA=S.teams[0],gB=S.teams[1],tie=gA.score==gB.score,on=S.q>4?S.q-3:1;h+='<h3 class="qt">La partita è finita'+(tie?' in parità':'')+'<br>'+(tie?'Si va al supplementare '+on:'Vuoi terminare la partita?')+'</h3><div class="eg"><div class="ea" style="background:'+gA.color+';color:'+txc(gA.color)+'">'+esc(gA.name)+'</div><div class="es">'+gA.score+'</div><div class="es">'+gB.score+'</div><div class="eb" style="background:'+gB.color+';color:'+txc(gB.color)+'">'+esc(gB.name)+'</div></div>'+(tie?'':mqHtml(1))+'<div class="qb"><button class="qb1" data-a="close">Torna indietro</button>'+(tie?'<button class="qb2" data-a="nextqOk">Avvia supplementare '+on+'</button>':'<button class="qb2" data-a="finalOk">Termina</button>')+'</div>'}
  if(m.k=='prevq'){var pqn=S.log.filter(function(e){return!e.void&&e.q==S.q&&!/^(Fine|Inizio) quarto/.test(e.txt)}).length;h+='<h3 class="qt">Vuoi tornare al '+(S.q-1>4?'supplementare '+(S.q-5):'quarto '+(S.q-1))+'?</h3>'+(pqn?'<p style="text-align:center;margin:-14px 0 20px">Le '+pqn+' azioni gi\u00e0 inserite nel quarto attuale verranno spostate in quello precedente.</p>':'')+'<div class="qb"><button class="qb1" data-a="close">Annulla</button><button class="qb2" data-a="prevqOk">Conferma</button></div>'}
  if(m.k=='subs'){var T=S.teams[m.t],o=T.p[m.i];h+='<i class="pcw"></i><h3>Esce '+o.n+' \u00b7 entra:</h3><div class="cg">';
   T.p.forEach(function(p,j){if(p.on&&!p.court&&!p.dq&&p.f<5)h+='<button class="ct on" data-a="doSub" data-v="'+j+'" style="background:'+T.color+';color:'+txc(T.color)+'">'+pc(m.t,p)+'</button>'});h+='</div><button class="opt" style="margin-top:12px" data-a="close">Annulla</button>'}
@@ -391,6 +424,7 @@ function modalView(){
   if(et==3)eb='<div class="ccl">'+[0,1].map(function(k){return'<div><div class="ch"><button class="cb" data-a="eoChk" data-v="'+k+'" aria-label="Reclamo">'+(cl[k]&&cl[k].on?'&#10003;':'')+'</button>'+esc(S.teams[k].name)+'</div><button class="cs" data-a="eoSign" data-v="'+k+'" aria-label="Firma">'+(cl[k]&&cl[k].sig?'<img alt="Firma" src="'+cl[k].sig+'">':'Sign')+'</button></div>'}).join('')+'</div>';
   h+='<div class="fh2"><button data-a="unfinal" aria-label="Indietro">&larr;</button><span>Termina Partita</span><button data-a="close" aria-label="Chiudi">&#10005;</button></div><div class="ftabs">'+['Ufficiali','Note','Referto','Reclamo del Capitano'].map(function(t,i){return'<button class="'+(i==et?'on':'')+'" data-a="eoTab" data-v="'+i+'">'+t+'</button>'}).join('')+'</div><div class="fbody">'+eb+'</div><button class="fsv" data-a="eoEnd">Termina partita</button>'}
  if(m.k=='endconf'){h+='<h3 class="qt">Sei sicuro di voler terminare<br>questa partita?</h3><div class="qb"><button class="qb1" data-a="eoBack">Torna Indietro</button><button class="qb2" data-a="eoAccept">Accetta</button></div>'}
+ if(m.k=='mqcfg'){var mc=mqCfg(),mb='<p style="margin:6px 0 4px;color:#555">Quarti minimi che ogni giocatore convocato deve giocare. <b>0 = controllo disattivato.</b> Imposta i valori in base al regolamento del tuo campionato. Vale per le squadre il cui nome contiene la categoria (es. «U16 Maschile»).</p><div class="g2">';MQK.forEach(function(c){var o='';for(var i=0;i<=4;i++)o+='<option value="'+i+'"'+((+mc[c[0]]||0)==i?' selected':'')+'>'+(i?i+(i==1?' quarto':' quarti'):'Disattivato')+'</option>';mb+='<div><label for="mq_'+c[0]+'">'+c[1]+'</label><select id="mq_'+c[0]+'">'+o+'</select></div>'});h+=fm('Minutaggio obbligatorio',mb+'</div>','Salva','mqSave')}
  if(m.k=='csign'){h+=fm('Firma capitano - '+esc(S.teams[m.t].name),'<canvas class="sg" id="sigc"></canvas><button data-a="clearSig" style="margin-top:8px;color:#c21f2b;font-weight:600">Cancella</button>','Salva firma','saveCSig')}
 
  if(m.k=='arch'){var ar=archGet(),rw='';ar.forEach(function(it){var dt=new Date(it.d);rw+='<button class="arow" data-a="archOpen" data-v="'+it.id+'"><b>'+esc(it.a)+' - '+esc(it.b)+'<small>'+dt.toLocaleDateString('it-IT')+' '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+'</small></b><span class="sc2">'+it.sa+' - '+it.sb+'</span></button>'});h+='<div class="mt"><span></span><span>Archivio referti ('+ar.length+')</span><button data-a="close" aria-label="Chiudi">\u2715</button></div><div class="mb" style="max-height:60vh;overflow:auto">'+(rw||'<p style="padding:16px 0;color:#666">Nessun referto archiviato. I referti vengono salvati qui quando premi Accetta a fine partita.</p>')+'</div><div class="brow"><button class="w" data-a="archExp">Esporta backup</button><button class="w" data-a="archImp">Importa backup</button></div><input type="file" id="impf" accept=".json,application/json" style="display:none">'}
@@ -417,7 +451,7 @@ function modalView(){
  if(m.k=='menu'){var H=function(t){return'<div class="msec">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
  h+='<h3>Menu</h3><div class="nav2">'+B('goHome','<span style="font-size:24px;line-height:1">\u2302</span>Home')+B('goAnag','<span style="font-size:24px;line-height:1">\ud83d\udc65</span>Anagrafica')+'</div>';
  if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica');
- h+=H('Referto')+B('help','\ud83d\udcd6 Istruzioni')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''));
+ h+=H('Referto')+B('help','\ud83d\udcd6 Istruzioni')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''))+B('mqCfg','\u23f1 Minutaggio obbligatorio');
  if(S.screen=='game')h+=(S.q>1?B('prevq','\u21a9 Torna al quarto precedente'):'')+B('pdf','PDF referto')+B('editTeams','Modifica squadre')+B('menu','Chiudi referto');
  h+=H('Altro')+B('wipeAsk','\u26a0 Azzera e ricomincia da capo',' style="background:#b3261e;color:#fff"')+B('close','Chiudi')}
  return h+'</div></div>'}
@@ -565,6 +599,9 @@ document.addEventListener('click',function(e){
  if(a=='doSub'){var m=S.modal,Tm=S.teams[m.t],o=Tm.p[m.i],n=Tm.p[v];snap();o.court=0;n.court=1;addLog(m.t,o.n,'Cambio out');addLog(m.t,n.n,'Cambio in');S.sel={t:m.t,i:+v};S.modal=null;return render()}
  if(a=='prevq'){if(S.q<2)return;S.modal={k:'prevq'};return render()}
  if(a=='prevqOk'){S.final=0;var pq=S.q-1,pix=-1;for(var pz=S.log.length-1;pz>=0;pz--){var pl=S.log[pz];if(!pl.void&&pl.txt=='Fine quarto '+pq&&pl.q==pq){pix=pz;break}}snap();var pe=pix>=0?S.log[pix]:null;if(pix>=0)S.log.splice(pix,1);S.log=S.log.filter(function(x){return!(x.txt=='Inizio quarto '+S.q&&x.q==S.q)});S.log.forEach(function(x){if(x.q==S.q)x.q=pq});S.q=pq;S.clock=pe?tsec(pe.time):(pq>4?300:600);S.running=false;S.brk=0;clearInterval(tmr);S.f=null;S.swipe=null;S.ins=null;S.modal=null;recompute();toast('Tornato al '+(pq>4?'supplementare '+(pq-4):'quarto '+pq));return render()}
+ if(a=='mqCfg'){S.modal={k:'mqcfg'};return render()}
+ if(a=='mqSave'){var mcf={};MQK.forEach(function(c){var v=+document.getElementById('mq_'+c[0]).value||0;if(v)mcf[c[0]]=v});try{localStorage.setItem(MQ_KEY,JSON.stringify(mcf))}catch(err){toast('Impossibile salvare');return}S.modal=null;toast('Minutaggio salvato');return render()}
+ if(a=='mqEx'){S.mqEx=S.mqEx||{};var mk=el.dataset.t+':'+el.dataset.v;if(S.mqEx[mk])delete S.mqEx[mk];else S.mqEx[mk]=1;return render()}
  if(a=='nextq'){if(S.final){S.modal={k:'end'};return render()}S.modal={k:S.q>=4?'endg':'endq'};return render()}
  if(a=='finalOk'){S.modal=null;S.f=null;snap();if(!S.final)addLog(0,'','Fine quarto '+S.q);S.final=1;S.running=false;clearInterval(tmr);recompute();S.endTab=0;S.modal={k:'endscr'};return render()}
 
