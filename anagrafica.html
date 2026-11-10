@@ -14,6 +14,10 @@
 <input type="file" id="imp" accept=".xlsx,.xls,.csv" style="display:none" onchange="importa(this)">
 <button class="btn" style="margin-top:8px;color:var(--mu)" onclick="modello()">Scarica modello Excel da compilare</button>
 <button class="btn r" style="margin-top:8px" onclick="svuota()">Svuota anagrafica</button>
+<div class="row" style="margin-top:18px"><button class="btn" onclick="scEsporta()">⬇ Esporta scadenze</button><button class="btn" onclick="document.getElementById('imps').click()">⬆ Importa scadenze</button></div>
+<input type="file" id="imps" accept=".xlsx,.xls,.csv" style="display:none" onchange="scImporta(this)">
+<button class="btn r" style="margin-top:8px" onclick="scCancella()">Cancella tutte le scadenze salvate</button>
+<p class="hint">Nascita, visita medica e tesseramento sono dati sensibili: restano su questo dispositivo e <b>non</b> sono nell'Excel dell'anagrafica. Per portarli su un altro dispositivo usa Esporta/Importa scadenze (file riservato: non condividerlo su canali non protetti).</p>
 <p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri dispositivi. <b>Per dare a un tablet solo una squadra:</b> scegli la squadra nel menu qui sopra e premi Esporta (il file contiene solo quella squadra).<br>Per usarli in gara: apri il Referto → menu ☰ → <b>Importa da anagrafica</b>.</p>
 </div>
 <div class="modal" id="m"><div class="sheet">
@@ -24,6 +28,8 @@
 <div id="f-s"><label>Ruolo</label><select id="ruolo-s"></select></div>
 <div id="f-o"><label>Ruolo / Incarico</label><input id="ruolo-o" list="ro" autocomplete="off"><datalist id="ro"></datalist></div>
 <label>N° tessera / CF</label><input id="lic">
+<div id="f-d" style="display:none"><div class="hint" style="margin:12px 0 2px">🔒 Dati riservati: restano <b>solo su questo dispositivo</b> (non vanno su cloud, Excel dell'anagrafica, archivio o PDF).</div>
+<label>Data di nascita</label><input id="d-nas" type="date"><div class="row"><div><label>Scadenza visita medica</label><input id="d-vis" type="date"></div><div><label>Scadenza tesseramento</label><input id="d-tes" type="date"></div></div></div>
 <div class="row" style="margin-top:16px"><button class="btn" onclick="chiudi()">Annulla</button><button class="btn p" onclick="salva()">Salva</button></div>
 <button class="btn r" id="del" style="margin-top:8px" onclick="elimina()">Elimina</button>
 </div></div>
@@ -52,7 +58,36 @@ function render(){
  var fq=T==='societa'?'':FQ;$('bx').textContent=fq?'⬇ Esporta solo '+fq:'⬇ Esporta Excel (tutta)';
  var L=A.filter(function(x){return x.tipo===T&&(T==='societa'||!FQ||(lab(x)||'Senza squadra')===FQ)});
  L.sort(function(a,b){var s=lab(a).localeCompare(lab(b));if(s)return s;return T==='giocatore'?(+a.numero||999)-(+b.numero||999):(a.cognome||'').localeCompare(b.cognome||'')});
- $('list').innerHTML=L.length?L.map(function(x){var sub=[T==='societa'?'':lab(x),x.ruolo,x.lic].filter(Boolean).map(esc).join(' · ');return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T!=='giocatore'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):(T==='staff'?'👤':'🏢'))+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+sub+'</small></span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
+ $('list').innerHTML=L.length?L.map(function(x){var sub=[T==='societa'?'':lab(x),x.ruolo,x.lic].filter(Boolean).map(esc).join(' · ');return '<button class="p-row" onclick="apri(\''+x.id+'\')"><span class="num'+(T!=='giocatore'?' s':'')+'">'+(T==='giocatore'?esc(x.numero||'–'):(T==='staff'?'👤':'🏢'))+'</span><span><b>'+esc(x.cognome)+' '+esc(x.nome)+'</b><small>'+sub+'</small>'+(T==='giocatore'?scBadge(x):'')+'</span></button>'}).join(''):'<div class="empty">Nessun elemento</div>'}
+
+/* ---------- scadenze (solo locali) ---------- */
+var SC_KEY='rb_scadenze_v1';
+function scKey(x){return'g|'+norm(x.cognome)+'|'+norm(x.nome)}
+function scRead(){try{var o=JSON.parse(localStorage.getItem(SC_KEY)||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}}
+function scWrite(o){try{localStorage.setItem(SC_KEY,JSON.stringify(o));return true}catch(e){return false}}
+function scDays(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return null;var d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+function scFmt(iso){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?m[3]+'/'+m[2]+'/'+m[1]:''}
+function scIso(v){if(v==null||v==='')return'';if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var p=XLSX.SSF.parse_date_code(v);if(p)return p.y+'-'+('0'+p.m).slice(-2)+'-'+('0'+p.d).slice(-2)}
+ v=String(v).trim();var m=/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})$/.exec(v);if(m){var y=m[3].length==2?(+m[3]>40?'19':'20')+m[3]:m[3];return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2)}
+ m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);return m?m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2):''}
+function scChip(lab,iso){var d=scDays(iso),c,t;
+ if(d===null){c='#7a86a8';t=lab+' –'}else if(d<0){c='#ff5d6c';t=lab+' scaduta'}else if(d<=30){c='#ffa53a';t=lab+' '+scFmt(iso).slice(0,5)}else{c='#2ecc71';t=lab+' OK'}
+ return'<span style="color:'+c+';font-weight:700;margin-right:8px">'+t+'</span>'}
+function scBadge(x){var e=scRead()[scKey(x)];if(!e||!(e.n||e.v||e.t))return'';
+ return'<small style="margin-top:3px">'+(e.n?'<span style="color:#7a86a8;margin-right:8px">'+esc(e.n.slice(0,4))+'</span>':'')+scChip('Visita',e.v)+scChip('Tess.',e.t)+'</small>'}
+function scEsporta(){var e=scRead(),rows=A.filter(function(x){return x.tipo==='giocatore'}).map(function(x){var d=e[scKey(x)]||{};return[x.cognome||'',x.nome||'',x.squadra||'',scFmt(d.n),scFmt(d.v),scFmt(d.t)]});
+ if(!rows.length)return alert('Nessun giocatore in anagrafica.');if(!window.XLSX)return alert('Libreria Excel non caricata: serve internet la prima volta.');
+ if(!confirm('Il file contiene dati sensibili (nascita e scadenze mediche di minorenni). Conservalo e condividilo solo in modo protetto. Procedere?'))return;
+ var ws=XLSX.utils.aoa_to_sheet([['Cognome','Nome','Squadra','Data di nascita','Scadenza visita medica','Scadenza tesseramento']].concat(rows));ws['!cols']=[{wch:18},{wch:16},{wch:12},{wch:16},{wch:22},{wch:22}];
+ var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Scadenze');XLSX.writeFile(wb,'scadenze_RISERVATO.xlsx')}
+function scImporta(inp){var f=inp.files[0];if(!f)return;if(!window.XLSX){inp.value='';return alert('Libreria Excel non caricata: serve internet la prima volta.')}
+ var r=new FileReader();r.onload=function(){try{var wb=XLSX.read(r.result,{type:'array',cellDates:false}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''}),e=scRead(),n=0,sk=0;
+  rows.forEach(function(row){var o={};Object.keys(row).forEach(function(k){var q=norm(k);if(q==='cognome')o.c=row[k];else if(q==='nome')o.nm=row[k];else if(q.indexOf('nascita')>=0)o.n=scIso(row[k]);else if(q.indexOf('visita')>=0)o.v=scIso(row[k]);else if(q.indexOf('tesser')>=0)o.t=scIso(row[k])});
+   if(!o.c&&!o.nm)return;var k=scKey({cognome:o.c,nome:o.nm});if(!A.some(function(x){return x.tipo==='giocatore'&&scKey(x)===k})){sk++;return}
+   e[k]={n:o.n||'',v:o.v||'',t:o.t||''};n++});
+  if(!scWrite(e))return alert('Impossibile salvare su questo dispositivo.');render();alert('Scadenze importate per '+n+' giocatori'+(sk?' ('+sk+' righe ignorate: giocatore non presente in anagrafica)':'')+'.')
+ }catch(err){alert('Impossibile leggere il file.')}inp.value=''};r.readAsArrayBuffer(f)}
+function scCancella(){if(confirm('Cancellare da questo dispositivo TUTTE le date di nascita e scadenze salvate? I giocatori in anagrafica non vengono toccati.')){try{localStorage.removeItem(SC_KEY)}catch(e){}render()}}
 function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED||{tipo:T},t=x.tipo;
  $('mt').textContent=ED?'Modifica':(t==='giocatore'?'Nuovo giocatore':t==='staff'?'Nuovo staff':'Nuova persona della società');
  $('sq').innerHTML=squadre().map(function(s){return'<option value="'+esc(s)+'">'}).join('');
@@ -62,14 +97,17 @@ function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED
  if(!ED&&FQ){var q=A.filter(function(y){return y.tipo!=='societa'&&lab(y)===FQ})[0];if(q){$('squadra').value=q.squadra||'';$('genere').value=q.genere||''}}
  $('cognome').value=x.cognome||'';$('nome').value=x.nome||'';$('numero').value=x.numero||'';$('lic').value=x.lic||'';
  setSel($('ruolo-g'),RUOLI_G,t==='giocatore'?x.ruolo:'',true);setSel($('ruolo-s'),RUOLI_STAFF,t==='staff'?x.ruolo:'',false);$('ruolo-o').value=t==='societa'?(x.ruolo||''):'';
+ $('f-d').style.display=t==='giocatore'?'block':'none';var sc=ED&&t==='giocatore'?(scRead()[scKey(ED)]||{}):{};$('d-nas').value=sc.n||'';$('d-vis').value=sc.v||'';$('d-tes').value=sc.t||'';
  $('del').style.display=ED?'block':'none';$('m').className='modal on'}
 function chiudi(){$('m').className='modal'}
 function salva(){var c=$('cognome').value.trim(),n=$('nome').value.trim(),tipo=ED?ED.tipo:T;if(!c&&!n){$('cognome').focus();return}
  if(tipo!=='societa'){if(!$('squadra').value.trim()){$('squadra').focus();return alert('Indica la squadra (es. U16).')}if(!$('genere').value){$('genere').focus();return alert('Indica se la squadra è Maschile o Femminile.')}}
  var o={id:ED?ED.id:'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),tipo:tipo,squadra:tipo==='societa'?'':$('squadra').value.trim(),genere:tipo==='societa'?'':$('genere').value,cognome:c,nome:n,lic:$('lic').value.trim(),
   numero:tipo==='giocatore'?$('numero').value:'',ruolo:tipo==='giocatore'?$('ruolo-g').value:tipo==='staff'?$('ruolo-s').value:$('ruolo-o').value.trim()};
+ if(tipo==='giocatore'){var se=scRead(),ok=ED?scKey(ED):null,nk=scKey(o),nv={n:$('d-nas').value,v:$('d-vis').value,t:$('d-tes').value};
+  if(ok&&ok!==nk)delete se[ok];if(nv.n||nv.v||nv.t)se[nk]=nv;else delete se[nk];scWrite(se)}
  A=ED?A.map(function(x){return x.id===o.id?o:x}):A.concat(o);anagPut(A);chiudi();render()}
-function elimina(){if(ED&&confirm('Eliminare '+ED.cognome+' '+ED.nome+'?')){A=A.filter(function(x){return x.id!==ED.id});anagPut(A);chiudi();render()}}
+function elimina(){if(ED&&confirm('Eliminare '+ED.cognome+' '+ED.nome+'?')){var se=scRead();delete se[scKey(ED)];scWrite(se);A=A.filter(function(x){return x.id!==ED.id});anagPut(A);chiudi();render()}}
 function svuota(){if(A.length&&confirm('Eliminare TUTTA l\'anagrafica ('+A.length+' persone)?'+(window.rbSync&&rbSync.on?' ATTENZIONE: si cancella anche sugli altri dispositivi collegati.':'')+' Esporta prima un file Excel se vuoi tenerne una copia.')){A=[];anagPut(A);render()}}
 
 /* ---------- Excel ---------- */

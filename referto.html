@@ -424,6 +424,7 @@ function modalView(){
   if(et==3)eb='<div class="ccl">'+[0,1].map(function(k){return'<div><div class="ch"><button class="cb" data-a="eoChk" data-v="'+k+'" aria-label="Reclamo">'+(cl[k]&&cl[k].on?'&#10003;':'')+'</button>'+esc(S.teams[k].name)+'</div><button class="cs" data-a="eoSign" data-v="'+k+'" aria-label="Firma">'+(cl[k]&&cl[k].sig?'<img alt="Firma" src="'+cl[k].sig+'">':'Sign')+'</button></div>'}).join('')+'</div>';
   h+='<div class="fh2"><button data-a="unfinal" aria-label="Indietro">&larr;</button><span>Termina Partita</span><button data-a="close" aria-label="Chiudi">&#10005;</button></div><div class="ftabs">'+['Ufficiali','Note','Referto','Reclamo del Capitano'].map(function(t,i){return'<button class="'+(i==et?'on':'')+'" data-a="eoTab" data-v="'+i+'">'+t+'</button>'}).join('')+'</div><div class="fbody">'+eb+'</div><button class="fsv" data-a="eoEnd">Termina partita</button>'}
  if(m.k=='endconf'){h+='<h3 class="qt">Sei sicuro di voler terminare<br>questa partita?</h3><div class="qb"><button class="qb1" data-a="eoBack">Torna Indietro</button><button class="qb2" data-a="eoAccept">Accetta</button></div>'}
+ if(m.k=='scad')h+=scadHtml();
  if(m.k=='mqcfg'){var mc=mqCfg(),mb='<p style="margin:6px 0 4px;color:#555">Quarti minimi che ogni giocatore convocato deve giocare. <b>0 = controllo disattivato.</b> Imposta i valori in base al regolamento del tuo campionato. Vale per le squadre il cui nome contiene la categoria (es. «U16 Maschile»).</p><div class="g2">';MQK.forEach(function(c){var o='';for(var i=0;i<=4;i++)o+='<option value="'+i+'"'+((+mc[c[0]]||0)==i?' selected':'')+'>'+(i?i+(i==1?' quarto':' quarti'):'Disattivato')+'</option>';mb+='<div><label for="mq_'+c[0]+'">'+c[1]+'</label><select id="mq_'+c[0]+'">'+o+'</select></div>'});h+=fm('Minutaggio obbligatorio',mb+'</div>','Salva','mqSave')}
  if(m.k=='csign'){h+=fm('Firma capitano - '+esc(S.teams[m.t].name),'<canvas class="sg" id="sigc"></canvas><button data-a="clearSig" style="margin-top:8px;color:#c21f2b;font-weight:600">Cancella</button>','Salva firma','saveCSig')}
 
@@ -463,13 +464,31 @@ function anagKey(x){return[(x.squadra||'').trim(),(x.genere||'').trim()].filter(
 function anagSq(a){var g={};a.forEach(function(x){if(x.tipo=='societa')return;var k=anagKey(x);g[k]=g[k]||{n:k,g:0,s:0};if(x.tipo=='staff')g[k].s++;else g[k].g++});return Object.keys(g).sort().map(function(k){return g[k]})}
 var ROLEMAP={'allenatore':'Capo allenatore','vice allenatore':'Assistente allenatore','dirigente':'Accompagnatore','preparatore':'Preparatore fisico','preparatore atletico':'Preparatore fisico','assistente':'Assistente allenatore','scorer':'Accompagnatore'};
 function anagRole(r){if(ROLES.indexOf(r)>=0)return r;return ROLEMAP[String(r||'').toLowerCase()]||'Accompagnatore'}
+/* ---------- controllo scadenze roster (dati solo locali, mai nel referto/archivio) ---------- */
+var SC_KEY='rb_scadenze_v1',SCADW=null;
+function scNorm(s){return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function scRead(){try{var o=JSON.parse(localStorage.getItem(SC_KEY)||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}}
+function scDays(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return null;var d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+function scFmt(iso){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?m[3]+'/'+m[2]+'/'+m[1]:''}
+function scWarn(list){var e=scRead(),w=[],any=false;
+ list.forEach(function(x){var d=e[scKey(x)],nm=((x.cognome||'')+' '+(x.nome||'')).trim();if(d&&(d.n||d.v||d.t))any=true;d=d||{};var r=[];
+  [['v','visita medica'],['t','tesseramento']].forEach(function(f){var g=scDays(d[f[0]]);
+   if(g===null)r.push({c:'#6b7280',t:f[1]+' mancante'});else if(g<0)r.push({c:'#c21f2b',t:f[1]+' SCADUTA il '+scFmt(d[f[0]])});else if(g<=30)r.push({c:'#c25e00',t:f[1]+' scade il '+scFmt(d[f[0]])+' ('+g+' gg)'})});
+  if(!d.n)r.push({c:'#6b7280',t:'data di nascita mancante'});
+  if(r.length)w.push({nm:nm,r:r})});
+ if(!any||!w.length)return false;SCADW=w;S.modal={k:'scad'};render();return true}
+function scKey(x){return'g|'+scNorm(x.cognome)+'|'+scNorm(x.nome)}
+function scadHtml(){if(!SCADW)return'<h3 class="qt">Controllo scadenze</h3><div class="qb"><button class="qb2" data-a="close">Chiudi</button></div>';
+ var h='<h3 class="qt">Controllo scadenze roster</h3><div style="text-align:left;margin:-14px 0 18px;max-height:45vh;overflow:auto;font-size:14px">';
+ SCADW.forEach(function(p){h+='<div style="padding:6px 0;border-bottom:1px solid #eee"><b>'+esc(p.nm)+'</b>'+p.r.map(function(r){return'<div style="color:'+r.c+';font-weight:600">'+esc(r.t)+'</div>'}).join('')+'</div>'});
+ return h+'<div style="color:#777;font-size:12px;margin-top:8px">Solo avviso: puoi proseguire. Questi dati restano su questo dispositivo e non compaiono nel referto.</div></div><div class="qb"><button class="qb2" data-a="scadOk">Ho capito</button></div>'}
 function anagImport(name){var T=S.teams[S.tab],all=anagRead().filter(function(x){return x.tipo!='societa'&&anagKey(x)==name}),
  gp=all.filter(function(x){return x.tipo!='staff'}).sort(function(a,b){return(+a.numero||999)-(+b.numero||999)}),used={},ps=[],seen={};
  gp.slice(0,15).forEach(function(x,i){var n=parseInt(x.numero,10);if(isNaN(n)||used[n]){n=4;while(used[n])n++}used[n]=1;ps.push({n:n,name:((x.cognome||'')+' '+(x.nome||'')).trim(),lic:x.lic||'',c:0,s:i<5?1:0,on:1,pts:0,f:0,court:0})});
  var st=all.filter(function(x){return x.tipo=='staff'}).map(function(x,i){var r=anagRole(x.ruolo),on=seen[r]?0:1;seen[r]=1;return{id:Date.now()+i,role:r,nome:x.nome||'',cognome:x.cognome||'',lic:x.lic||'',on:on}});
  if(!ps.length)return toast('Nessun giocatore in questa squadra');
  T.p=ps;T.staff=st;T.mine=1;if(name!='Senza squadra')T.name=name;S.sub='g';S.modal=null;render();
- toast('Importati '+ps.length+' giocatori e '+st.length+' staff'+(gp.length>15?' (primi 15 su '+gp.length+')':''))}
+ toast('Importati '+ps.length+' giocatori e '+st.length+' staff'+(gp.length>15?' (primi 15 su '+gp.length+')':''));scWarn(gp.slice(0,15))}
 var AK='referto_archivio_v1';
 function archGet(){try{var a=JSON.parse(localStorage.getItem(AK)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function archPut(a){try{localStorage.setItem(AK,JSON.stringify(a));return true}catch(e){return false}}
@@ -599,6 +618,7 @@ document.addEventListener('click',function(e){
  if(a=='doSub'){var m=S.modal,Tm=S.teams[m.t],o=Tm.p[m.i],n=Tm.p[v];snap();o.court=0;n.court=1;addLog(m.t,o.n,'Cambio out');addLog(m.t,n.n,'Cambio in');S.sel={t:m.t,i:+v};S.modal=null;return render()}
  if(a=='prevq'){if(S.q<2)return;S.modal={k:'prevq'};return render()}
  if(a=='prevqOk'){S.final=0;var pq=S.q-1,pix=-1;for(var pz=S.log.length-1;pz>=0;pz--){var pl=S.log[pz];if(!pl.void&&pl.txt=='Fine quarto '+pq&&pl.q==pq){pix=pz;break}}snap();var pe=pix>=0?S.log[pix]:null;if(pix>=0)S.log.splice(pix,1);S.log=S.log.filter(function(x){return!(x.txt=='Inizio quarto '+S.q&&x.q==S.q)});S.log.forEach(function(x){if(x.q==S.q)x.q=pq});S.q=pq;S.clock=pe?tsec(pe.time):(pq>4?300:600);S.running=false;S.brk=0;clearInterval(tmr);S.f=null;S.swipe=null;S.ins=null;S.modal=null;recompute();toast('Tornato al '+(pq>4?'supplementare '+(pq-4):'quarto '+pq));return render()}
+ if(a=='scadOk'){SCADW=null;S.modal=null;return render()}
  if(a=='mqCfg'){S.modal={k:'mqcfg'};return render()}
  if(a=='mqSave'){var mcf={};MQK.forEach(function(c){var v=+document.getElementById('mq_'+c[0]).value||0;if(v)mcf[c[0]]=v});try{localStorage.setItem(MQ_KEY,JSON.stringify(mcf))}catch(err){toast('Impossibile salvare');return}S.modal=null;toast('Minutaggio salvato');return render()}
  if(a=='mqEx'){S.mqEx=S.mqEx||{};var mk=el.dataset.t+':'+el.dataset.v;if(S.mqEx[mk])delete S.mqEx[mk];else S.mqEx[mk]=1;return render()}
