@@ -26,6 +26,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
 <div class="row" style="margin-top:18px"><button class="btn p" onclick="$('imp').click()">⬆ Importa file partite</button><button class="btn" onclick="esportaXls()">⬇ Esporta Excel</button></div>
 <input type="file" id="imp" accept=".json,application/json" multiple style="display:none" onchange="importa(this)">
 <button class="btn" style="margin-top:8px;color:var(--mu)" onclick="backup()">Salva copia di sicurezza dell'archivio</button>
+<button class="btn" style="margin-top:8px" onclick="location.href='istruzioni.html'">📖 Istruzioni</button>
 <p class="hint">Dal tablet: a fine gara premi <b>Invia al PC</b> e importa qui il file ricevuto (anche più file insieme).<br>I nomi dei giocatori vengono collegati all'Anagrafica di questo dispositivo tramite tessera o nome e cognome. Le statistiche restano al giocatore anche se gioca in una squadra diversa dalla sua.<br>I dati sono salvati in questo browser: fai ogni tanto la copia di sicurezza.</p>
 </div>
 <div class="modal" id="m"><div class="sheet big" id="mb"></div></div>

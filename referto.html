@@ -452,7 +452,7 @@ function modalView(){
  if(m.k=='menu'){var H=function(t){return'<div class="msec">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
  h+='<h3>Menu</h3><div class="nav2">'+B('goHome','<span style="font-size:24px;line-height:1">\u2302</span>Home')+B('goAnag','<span style="font-size:24px;line-height:1">\ud83d\udc65</span>Anagrafica')+'</div>';
  if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica');
- h+=H('Referto')+B('help','\ud83d\udcd6 Istruzioni')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''))+B('mqCfg','\u23f1 Minutaggio obbligatorio');
+ h+=H('Referto')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''))+B('mqCfg','\u23f1 Minutaggio obbligatorio');
  if(S.screen=='game')h+=(S.q>1?B('prevq','\u21a9 Torna al quarto precedente'):'')+B('pdf','PDF referto')+B('editTeams','Modifica squadre')+B('menu','Chiudi referto');
  h+=H('Altro')+B('wipeAsk','\u26a0 Azzera e ricomincia da capo',' style="background:#b3261e;color:#fff"')+B('close','Chiudi')}
  return h+'</div></div>'}
