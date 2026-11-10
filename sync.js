@@ -47,4 +47,75 @@ S.anagStart=function(cb){if(cb)cbs.push(cb);if(started)return;started=true;
    else CL[k]=sg});
   if(ch){try{localStorage.setItem(AKEY,JSON.stringify(Object.keys(map).map(function(k){return map[k]})))}catch(e){}cbs.forEach(function(f){try{f()}catch(e){}})}
   if(!s.metadata.fromCache)S.anagPush()},function(){})}).catch(function(){})};
+/* ---- scadenze (nascita, visita medica, tesseramento): dati sensibili.
+   Sul cloud vanno SOLO CIFRATE sul dispositivo (AES-GCM 256, chiave derivata dal codice dello staff con PBKDF2).
+   Senza il codice il contenuto della collezione 'scadenze' non e' leggibile, nemmeno per chi accede a Firebase. ---- */
+var SCS='rb_scadenze_v1',SCKS='rb_sck_v1',SCL={},SK=null,SKID='',scStarted=false,scSynced=false,scUnsub=null;
+function sby(s){return new TextEncoder().encode(s)}
+function b64(b){var a=new Uint8Array(b),s='';for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s)}
+function ub64(s){var t=atob(s),a=new Uint8Array(t.length);for(var i=0;i<t.length;i++)a[i]=t.charCodeAt(i);return a}
+function scRd(){try{var o=JSON.parse(localStorage.getItem(SCS)||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}}
+function scWr(o){try{localStorage.setItem(SCS,JSON.stringify(o))}catch(e){}}
+function ssig(e){return JSON.stringify([e.n||'',e.v||'',e.t||''])}
+function sent(p){return{n:p.n||'',v:p.v||'',t:p.t||''}}
+function sder(pass,salt){return crypto.subtle.importKey('raw',sby(pass),'PBKDF2',false,['deriveKey']).then(function(m){return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:250000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},true,['encrypt','decrypt'])})}
+function senc(key,obj){var iv=crypto.getRandomValues(new Uint8Array(12));return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,sby(JSON.stringify(obj))).then(function(ct){return{iv:b64(iv),ct:b64(ct)}})}
+function sdec(key,d){return crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(d.iv)},key,ub64(d.ct)).then(function(p){return JSON.parse(new TextDecoder().decode(p))})}
+function sid(k){return crypto.subtle.digest('SHA-256',sby('sc|'+k)).then(function(h){var a=new Uint8Array(h),s='';for(var i=0;i<16;i++)s+=('0'+a[i].toString(16)).slice(-2);return'd'+s})}
+function skLoad(){try{var o=JSON.parse(localStorage.getItem(SCKS)||'null');if(!o||!o.jwk)return Promise.resolve(false);
+ return crypto.subtle.importKey('jwk',o.jwk,{name:'AES-GCM'},true,['encrypt','decrypt']).then(function(k){SK=k;SKID=o.kid;return true},function(){return false})}catch(e){return Promise.resolve(false)}}
+function skSet(key,kid){SK=key;SKID=kid;return crypto.subtle.exportKey('jwk',key).then(function(j){try{localStorage.setItem(SCKS,JSON.stringify({kid:kid,jwk:j}))}catch(e){}})}
+function scNote(){cbs.forEach(function(f){try{f()}catch(e){}})}
+function scMeta(pass){var salt=crypto.getRandomValues(new Uint8Array(16)),kid=b64(crypto.getRandomValues(new Uint8Array(9)));
+ return sder(pass,salt).then(function(k){return senc(k,{ok:1}).then(function(chk){return{key:k,kid:kid,meta:{salt:b64(salt),kid:kid,chk:chk,u:Date.now()}}})})}
+function scListen(){if(scStarted||!SK)return;scStarted=true;scSynced=false;
+ init().then(function(){scUnsub=db.collection('scadenze').onSnapshot(function(s){var meta=null,docs=[];s.forEach(function(d){if(d.id==='meta')meta=d.data();else docs.push(d)});
+  if(!SK)return;
+  if(meta&&meta.kid!==SKID){S.scLock();scNote();return}
+  var cur=scRd();
+  Promise.all(Object.keys(cur).map(function(k){return sid(k).then(function(i){return[i,k]})})).then(function(pr){var i2k={};pr.forEach(function(p){i2k[p[0]]=p[1]});
+   return Promise.all(docs.map(function(d){var v=d.data();if(v.del)return{id:d.id,del:1};return sdec(SK,v).then(function(p){return{id:d.id,p:p}},function(){return null})})).then(function(rs){
+    var map=scRd(),ch=false;
+    rs.forEach(function(r){if(!r)return;
+     if(r.del){var k=i2k[r.id];if(k){if(map[k]&&SCL[k]===ssig(map[k])){delete map[k];ch=true}if(!map[k]||SCL[k]===undefined)SCL[k]=null}return}
+     var p=r.p,k=p.k,sg=ssig(p),l=map[k];
+     if(!l){map[k]=sent(p);SCL[k]=sg;ch=true}
+     else if(ssig(l)!==sg){if(SCL[k]===undefined||SCL[k]===ssig(l)){map[k]=sent(p);SCL[k]=sg;ch=true}}
+     else SCL[k]=sg});
+    if(ch){scWr(map);scNote()}
+    scSynced=true;if(!s.metadata.fromCache)S.scPush()})})
+ },function(){scStarted=false})}).catch(function(){scStarted=false})}
+S.scOn=function(){return!!SK};
+S.scPush=function(){if(!SK||!scSynced)return Promise.resolve();
+ return init().then(function(){var cur=scRd(),c=db.collection('scadenze'),now=Date.now(),jobs=[];
+  Object.keys(cur).forEach(function(k){var e=cur[k];if(!(e.n||e.v||e.t))return;var sg=ssig(e);
+   if(SCL[k]!==sg){SCL[k]=sg;jobs.push(Promise.all([sid(k),senc(SK,{k:k,n:e.n||'',v:e.v||'',t:e.t||''})]).then(function(r){return c.doc(r[0]).set({iv:r[1].iv,ct:r[1].ct,del:0,u:now})}))}});
+  Object.keys(SCL).forEach(function(k){var e=cur[k];if((!e||!(e.n||e.v||e.t))&&SCL[k]!==null){SCL[k]=null;jobs.push(sid(k).then(function(i){return c.doc(i).set({del:1,u:now})}))}});
+  return Promise.all(jobs)}).catch(function(){})};
+/* attiva su questo dispositivo: con un codice gia' esistente si unisce; se non esiste ancora serve crearlo (pass2 = ripetizione) */
+S.scEnable=function(pass,pass2){
+ if(!window.crypto||!crypto.subtle)return Promise.reject(new Error('Questo browser non supporta la cifratura (serve https).'));
+ if(!pass)return Promise.reject(new Error('Inserisci il codice.'));
+ return init().then(function(){return db.collection('scadenze').doc('meta').get({source:'server'})},function(){throw new Error('Sincronizzazione online non disponibile.')})
+ .then(function(m){
+  if(m.exists){var d=m.data();return sder(pass,ub64(d.salt)).then(function(k){return sdec(k,d.chk).then(function(){return skSet(k,d.kid)},function(){throw new Error('Codice errato.')})}).then(function(){scListen();return'joined'})}
+  if(pass2===undefined)throw new Error('NUOVO');
+  if(String(pass).length<12)throw new Error('Il codice deve avere almeno 12 caratteri.');
+  if(pass!==pass2)throw new Error('I due codici non coincidono.');
+  return scMeta(pass).then(function(r){return db.collection('scadenze').doc('meta').set(r.meta).then(function(){return skSet(r.key,r.kid)})}).then(function(){scListen();return'created'})
+ },function(e){if(e&&e.message&&e.message!=='NUOVO'&&!/Codice|codice|Sincroniz|browser/.test(e.message))throw new Error('Serve la connessione internet per attivare.');throw e})};
+/* cambia il codice: ricifra tutto con una nuova chiave; gli altri dispositivi dovranno reinserire il codice */
+S.scChange=function(pass,pass2){
+ if(!SK)return Promise.reject(new Error('Prima attiva la sincronizzazione.'));
+ if(String(pass||'').length<12)return Promise.reject(new Error('Il codice deve avere almeno 12 caratteri.'));
+ if(pass!==pass2)return Promise.reject(new Error('I due codici non coincidono.'));
+ return init().then(function(){return scMeta(pass)}).then(function(r){var cur=scRd(),c=db.collection('scadenze'),ks=Object.keys(cur).filter(function(k){var e=cur[k];return e.n||e.v||e.t});
+  return Promise.all(ks.map(function(k){return Promise.all([sid(k),senc(r.key,{k:k,n:cur[k].n||'',v:cur[k].v||'',t:cur[k].t||''})])})).then(function(rows){
+   var b=db.batch(),now=Date.now();b.set(c.doc('meta'),r.meta);rows.forEach(function(x){b.set(c.doc(x[0]),{iv:x[1].iv,ct:x[1].ct,del:0,u:now})});
+   return b.commit().then(function(){return skSet(r.key,r.kid)}).then(function(){ks.forEach(function(k){SCL[k]=ssig(cur[k])});return'changed'})})})};
+/* disattiva su questo dispositivo: dimentica la chiave (i dati locali restano, il cloud non viene toccato) */
+S.scLock=function(){SK=null;SKID='';scStarted=false;scSynced=false;SCL={};try{localStorage.removeItem(SCKS)}catch(e){}if(scUnsub){try{scUnsub()}catch(e){}scUnsub=null}};
+S.scReady=(window.crypto&&crypto.subtle)?skLoad():Promise.resolve(false);
+var _as=S.anagStart;S.anagStart=function(cb){var r=_as(cb);S.scReady.then(function(ok){if(ok)scListen()});return r};
+addEventListener('online',function(){S.scPush()});
 })();

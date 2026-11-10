@@ -17,6 +17,7 @@
 <div class="row" style="margin-top:18px"><button class="btn" onclick="scEsporta()">⬇ Esporta scadenze</button><button class="btn" onclick="document.getElementById('imps').click()">⬆ Importa scadenze</button></div>
 <input type="file" id="imps" accept=".xlsx,.xls,.csv" style="display:none" onchange="scImporta(this)">
 <button class="btn r" style="margin-top:8px" onclick="scCancella()">Cancella tutte le scadenze salvate</button>
+<div id="sc-cloud" style="display:none;margin-top:14px;background:var(--pan);border-radius:8px;padding:12px"><div id="sc-st" style="font-weight:700;margin-bottom:6px"></div><div id="sc-tx" class="hint" style="margin:0 0 10px"></div><div class="row" id="sc-bt"></div></div>
 <p class="hint">Nascita, visita medica e tesseramento sono dati sensibili: restano su questo dispositivo e <b>non</b> sono nell'Excel dell'anagrafica. Per portarli su un altro dispositivo usa Esporta/Importa scadenze (file riservato: non condividerlo su canali non protetti).</p>
 <p class="hint">I dati sono salvati su questo dispositivo. Con Esporta/Importa Excel li passi ad altri dispositivi. <b>Per dare a un tablet solo una squadra:</b> scegli la squadra nel menu qui sopra e premi Esporta (il file contiene solo quella squadra).<br>Per usarli in gara: apri il Referto → menu ☰ → <b>Importa da anagrafica</b>.</p>
 </div>
@@ -32,6 +33,13 @@
 <label>Data di nascita</label><input id="d-nas" type="date"><div class="row"><div><label>Scadenza visita medica</label><input id="d-vis" type="date"></div><div><label>Scadenza tesseramento</label><input id="d-tes" type="date"></div></div></div>
 <div class="row" style="margin-top:16px"><button class="btn" onclick="chiudi()">Annulla</button><button class="btn p" onclick="salva()">Salva</button></div>
 <button class="btn r" id="del" style="margin-top:8px" onclick="elimina()">Elimina</button>
+</div></div>
+<div class="modal" id="mk"><div class="sheet">
+<h2 id="mkt">Codice scadenze</h2><div class="hint" id="mkh" style="margin:4px 0 10px"></div>
+<label>Codice</label><input id="kc1" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+<div id="kc2w" style="display:none"><label>Ripeti il codice</label><input id="kc2" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div id="mke" style="color:#ff5d6c;font-weight:700;margin-top:8px;min-height:1.2em"></div>
+<div class="row" style="margin-top:12px"><button class="btn" onclick="mkChiudi()">Annulla</button><button class="btn p" id="mkok" onclick="mkConferma()">Conferma</button></div>
 </div></div>
 <script src="app.js"></script>
 <script src="xlsx.full.min.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
@@ -64,7 +72,8 @@ function render(){
 var SC_KEY='rb_scadenze_v1';
 function scKey(x){return'g|'+norm(x.cognome)+'|'+norm(x.nome)}
 function scRead(){try{var o=JSON.parse(localStorage.getItem(SC_KEY)||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}}
-function scWrite(o){try{localStorage.setItem(SC_KEY,JSON.stringify(o));return true}catch(e){return false}}
+function scSyncPush(){if(window.rbSync&&rbSync.on&&rbSync.scPush)rbSync.scPush()}
+function scWrite(o){try{localStorage.setItem(SC_KEY,JSON.stringify(o));scSyncPush();return true}catch(e){return false}}
 function scDays(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return null;var d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
 function scFmt(iso){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?m[3]+'/'+m[2]+'/'+m[1]:''}
 function scIso(v){if(v==null||v==='')return'';if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var p=XLSX.SSF.parse_date_code(v);if(p)return p.y+'-'+('0'+p.m).slice(-2)+'-'+('0'+p.d).slice(-2)}
@@ -87,7 +96,26 @@ function scImporta(inp){var f=inp.files[0];if(!f)return;if(!window.XLSX){inp.val
    e[k]={n:o.n||'',v:o.v||'',t:o.t||''};n++});
   if(!scWrite(e))return alert('Impossibile salvare su questo dispositivo.');render();alert('Scadenze importate per '+n+' giocatori'+(sk?' ('+sk+' righe ignorate: giocatore non presente in anagrafica)':'')+'.')
  }catch(err){alert('Impossibile leggere il file.')}inp.value=''};r.readAsArrayBuffer(f)}
-function scCancella(){if(confirm('Cancellare da questo dispositivo TUTTE le date di nascita e scadenze salvate? I giocatori in anagrafica non vengono toccati.')){try{localStorage.removeItem(SC_KEY)}catch(e){}render()}}
+function scAttiva(){return!!(window.rbSync&&rbSync.on&&rbSync.scOn&&rbSync.scOn())}
+function scCancella(){if(confirm('Cancellare TUTTE le date di nascita e scadenze salvate? I giocatori in anagrafica non vengono toccati.'+(scAttiva()?' ATTENZIONE: con la sincronizzazione attiva si cancellano anche sul cloud e sugli altri dispositivi.':''))){try{localStorage.removeItem(SC_KEY)}catch(e){}scSyncPush();render()}}
+/* ---------- sincronizzazione cifrata delle scadenze ---------- */
+var MK=null;
+function scUi(){var box=$('sc-cloud');if(!window.rbSync||!rbSync.on||!rbSync.scEnable){box.style.display='none';return}box.style.display='block';var on=scAttiva(),bt=$('sc-bt');
+ $('sc-st').textContent=on?'🔐 Sincronizzazione cifrata attiva su questo dispositivo':'🔒 Scadenze solo su questo dispositivo';
+ $('sc-tx').innerHTML=on?'Le scadenze si aggiornano da sole sugli altri dispositivi che hanno inserito il codice. Sul cloud c\'è solo testo cifrato: senza il codice non è leggibile.':'Per vederle anche sugli altri dispositivi, attiva la sincronizzazione cifrata: serve un codice dello staff (almeno 12 caratteri). <b>Se il codice si perde, le scadenze sul cloud non si recuperano.</b>';
+ bt.innerHTML=on?'<button class="btn" onclick="mkApri(\'change\')">Cambia codice</button><button class="btn" onclick="scDisattiva()">Disattiva qui</button>':'<button class="btn p" onclick="mkApri(\'enable\')">🔐 Attiva sincronizzazione cifrata</button>'}
+function scDisattiva(){if(confirm('Disattivare la sincronizzazione su questo dispositivo? Le scadenze già presenti restano qui, ma non si aggiornano più. Sul cloud non viene cancellato nulla.')){rbSync.scLock();scUi()}}
+function mkApri(m){MK=m;$('kc1').value='';$('kc2').value='';$('mke').textContent='';$('kc2w').style.display=m==='change'?'block':'none';
+ $('mkt').textContent=m==='change'?'Nuovo codice':'Codice delle scadenze';
+ $('mkh').textContent=m==='change'?'Scegli un nuovo codice (almeno 12 caratteri, meglio una frase). Gli altri dispositivi dovranno inserirlo di nuovo.':'Inserisci il codice dello staff. Se è la prima volta, ti verrà chiesto di crearne uno.';
+ $('mk').className='modal on';setTimeout(function(){$('kc1').focus()},60)}
+function mkChiudi(){$('mk').className='modal'}
+function mkConferma(){var b=$('mkok'),two=$('kc2w').style.display==='block',p1=$('kc1').value,p2=$('kc2').value;b.disabled=true;$('mke').style.color='#8d96bd';$('mke').textContent='Attendere…';
+ var pr=MK==='change'?rbSync.scChange(p1,p2):rbSync.scEnable(p1,two?p2:undefined);
+ pr.then(function(r){b.disabled=false;mkChiudi();A=anagGet();render();scUi();alert(r==='created'?'Codice creato. Conservalo: sugli altri dispositivi andrà inserito una volta sola.':r==='changed'?'Codice cambiato. Gli altri dispositivi chiederanno il nuovo codice.':'Sincronizzazione attivata: le scadenze arrivano da sole.')},
+ function(e){b.disabled=false;$('mke').style.color='#ff5d6c';
+  if(e&&e.message==='NUOVO'){$('kc2w').style.display='block';$('mkh').textContent='Nessun codice creato finora: sceglietene uno di almeno 12 caratteri (meglio una frase) e ripetetelo. Conservatelo: se si perde, le scadenze cifrate sul cloud non si recuperano.';$('mke').textContent='';$('kc2').focus()}
+  else $('mke').textContent=(e&&e.message)||'Errore'})}
 function apri(id){ED=id?A.filter(function(x){return x.id===id})[0]:null;var x=ED||{tipo:T},t=x.tipo;
  $('mt').textContent=ED?'Modifica':(t==='giocatore'?'Nuovo giocatore':t==='staff'?'Nuovo staff':'Nuova persona della società');
  $('sq').innerHTML=squadre().map(function(s){return'<option value="'+esc(s)+'">'}).join('');
@@ -148,6 +176,7 @@ function importa(inp){var f=inp.files[0];if(!f)return;if(!window.XLSX){inp.value
   anagPut(A);render();alert('Importazione completata: '+agg+' nuovi, '+upd+' aggiornati.')
  }catch(e){alert('Impossibile leggere il file. Usa un file Excel (.xlsx, .xls) o CSV.')}inp.value=''};r.readAsArrayBuffer(f)}
 var _ap=anagPut;anagPut=function(a){var r=_ap(a);if(window.rbSync&&rbSync.on)rbSync.anagPush();return r};
-if(window.rbSync&&rbSync.on)rbSync.anagStart(function(){A=anagGet();render()});
-tab('giocatore');
+if(window.rbSync&&rbSync.on)rbSync.anagStart(function(){A=anagGet();render();scUi()});
+if(window.rbSync&&rbSync.on&&rbSync.scReady)rbSync.scReady.then(scUi);
+tab('giocatore');scUi();
 </script></body></html>
