@@ -123,4 +123,8 @@ S.scLock=function(){SK=null;SKID='';scStarted=false;scSynced=false;SCL={};try{lo
 S.scReady=(window.crypto&&crypto.subtle)?skLoad():Promise.resolve(false);
 var _as=S.anagStart;S.anagStart=function(cb){var r=_as(cb);S.scReady.then(function(ok){if(ok)scListen()});return r};
 addEventListener('online',function(){S.scPush()});
+/* ---- partita in corso: il referto pubblica nomi squadre e convocati (solo nome e numero), la pagina Mappa dei tiri li legge su un altro dispositivo ---- */
+S.livePush=function(d){return init().then(function(){return db.collection('live').doc(docId(d.gid)).set(d)}).catch(function(){})};
+S.liveWatch=function(cb){return init().then(function(){db.collection('live').onSnapshot(function(s){var r=[],old=Date.now()-7*864e5;
+ s.forEach(function(x){var v=x.data();if(v&&v.u&&v.u<old){db.collection('live').doc(x.id).delete().catch(function(){})}else if(v)r.push(v)});cb(r)},function(){cb(null)})}).catch(function(){cb(null)})};
 })();

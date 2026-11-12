@@ -504,7 +504,16 @@ function mkPdf(html){return libs().then(function(){var d=document.createElement(
 function pdfOut(it,share){toast('Creo il PDF...');mkPdf(it.html).then(function(b){var n=fname(it),file=new File([b],n,{type:'application/pdf'});if(share&&navigator.canShare&&navigator.canShare({files:[file]}))return navigator.share({files:[file],title:n}).catch(function(e){if(e&&e.name!='AbortError')throw e});var u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=n;document.body.appendChild(l);l.click();l.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);if(share)toast('Condivisione non supportata: PDF scaricato')}).catch(function(){toast('PDF non disponibile: serve internet la prima volta. Uso la stampa.');try{window.print()}catch(e){}})}
 function curItem(){var A=S.teams[0],B=S.teams[1];return{a:A.name,b:B.name,d:new Date().toISOString(),html:sheet()}}
 var SK='referto_basket_v1',svT=null;
-function save(){try{var o={S:S,hist:hist.slice(-20)};try{localStorage.setItem(SK,JSON.stringify(o))}catch(e){o.hist=[];localStorage.setItem(SK,JSON.stringify(o))}}catch(e){}}
+/* pubblica (con ritardo) nomi squadre e convocati per la pagina Mappa dei tiri su un altro dispositivo */
+var LV_SIG='',LV_T=null;
+function livePub(){if(!window.rbSync||!rbSync.on||!rbSync.livePush)return;
+ var tm=S.teams.map(function(T){return{name:T.name||'',mine:T.mine?1:0,p:T.p.filter(function(p){return p.on}).map(function(p){return{n:String(p.n),name:p.name||''}})}});
+ if(!tm.some(function(t){return t.mine||(t.name&&!/^Squadra [AB]$/.test(t.name))}))return;
+ if(!S.gid)S.gid='L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ var sg=JSON.stringify([tm,S.screen=='setup']);if(sg===LV_SIG)return;LV_SIG=sg;clearTimeout(LV_T);var gid=S.gid,st=S.screen=='setup'?'setup':'game';
+ LV_T=setTimeout(function(){rbSync.livePush({gid:gid,u:Date.now(),d:new Date().toISOString(),st:st,teams:tm})},2500)}
+addEventListener('online',function(){LV_SIG=''});
+function save(){try{livePub()}catch(e){}try{var o={S:S,hist:hist.slice(-20)};try{localStorage.setItem(SK,JSON.stringify(o))}catch(e){o.hist=[];localStorage.setItem(SK,JSON.stringify(o))}}catch(e){}}
 function load(){try{var r=localStorage.getItem(SK);if(!r)return false;var o=JSON.parse(r);if(!o||!o.S||!o.S.teams)return false;Object.keys(o.S).forEach(function(k){S[k]=o.S[k]});S.running=false;if(S.modal&&(S.modal.k=='sign'||S.modal.k=='csign'))S.modal=null;hist=o.hist||[];return true}catch(e){return false}}
 function render(){
  var ae=document.activeElement,sid=ae&&ae.dataset?(ae.dataset.p||ae.dataset.s||ae.dataset.o)&&ae:null,pos=sid?sid.selectionStart:0,key=sid?[sid.dataset.p,sid.dataset.s,sid.dataset.o,sid.dataset.i]:null;
