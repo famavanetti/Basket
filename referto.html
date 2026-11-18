@@ -3,7 +3,7 @@
 <head>
 <script>try{var _t=+localStorage.getItem('rb_auth');if(!_t||Date.now()-_t>14*864e5)location.replace('index.html')}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
-<script src="firebase-config.js"></script><script src="sync.js"></script>
+<script src="firebase-config.js"></script><script src="sync.js"></script><script src="cal.js"></script>
 <script>if(window.rbSync&&rbSync.on)addEventListener("load",function(){rbSync.pushAll();rbSync.anagStart()})</script>
 
 <meta charset="utf-8">
@@ -451,7 +451,7 @@ function modalView(){
  if(m.k=='anag'){var sqs=anagSq(anagRead());h+='<h3>Importa da anagrafica</h3><p style="color:var(--mu);margin-bottom:12px">Verrà caricata nella <b>squadra '+(S.tab?'B':'A')+'</b>: sostituisce giocatori e staff attuali.</p>';if(!sqs.length)h+='<p style="margin-bottom:12px">L\'anagrafica è vuota: compilala prima dalla pagina Anagrafica.</p>';sqs.forEach(function(q,i){h+='<button class="opt" data-a="anagDo" data-v="'+i+'">'+esc(q.n)+' <small style="color:var(--mu)">· '+q.g+' giocatori · '+q.s+' staff</small></button>'});h+='<button class="opt" data-a="goAnag">Apri Anagrafica</button><button class="opt" data-a="close">Chiudi</button>'}
  if(m.k=='menu'){var H=function(t){return'<div class="msec">'+t+'</div>'},B=function(a,t,x){return'<button class="opt" data-a="'+a+'"'+(x||'')+'>'+t+'</button>'};
  h+='<h3>Menu</h3><div class="nav2">'+B('goHome','<span style="font-size:24px;line-height:1">\u2302</span>Home')+B('goAnag','<span style="font-size:24px;line-height:1">\ud83d\udc65</span>Anagrafica')+'</div>';
- if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica');
+ if(S.screen=='setup')h+=H('Squadre')+B('anagOpen','\ud83d\udce5 Importa da anagrafica')+B('calOpen','\ud83d\udcc5 Calendario / avversario');
  h+=H('Referto')+B('arch','Archivio referti')+B('notes','Note del referto'+(S.notes?' \u2713':''))+B('mqCfg','\u23f1 Minutaggio obbligatorio');
  if(S.screen=='game')h+=(S.q>1?B('prevq','\u21a9 Torna al quarto precedente'):'')+B('pdf','PDF referto')+B('editTeams','Modifica squadre')+B('menu','Chiudi referto');
  h+=H('Altro')+B('wipeAsk','\u26a0 Azzera e ricomincia da capo',' style="background:#b3261e;color:#fff"')+B('close','Chiudi')}
@@ -542,6 +542,7 @@ document.addEventListener('click',function(e){
  function val(id){return document.getElementById(id).value.trim()}
  if(a=='goAnag'){location.href='anagrafica.html';return}
  if(a=='goHome'){location.href='home.html';return}
+ if(a=='calOpen'){var mi=S.teams[0].mine&&!S.teams[1].mine?0:S.teams[1].mine&&!S.teams[0].mine?1:(S.tab<=1?S.tab:0),oi=1-mi;S.modal=null;render();if(!window.rbCal)return toast('Calendario non disponibile');return rbCal.open({onPick:function(opp,g){S.teams[oi].name=opp;save();render();toast('Avversario: '+opp+' (squadra '+(oi?'B':'A')+')')}})}
  if(a=='anagOpen'){if(S.tab>1)return toast('Apri prima la squadra A o B');S.modal={k:'anag'};return render()}
  if(a=='anagDo'){var qs=anagSq(anagRead())[+v];if(qs)anagImport(qs.n);return}
  if(a=='more'){S.modal={k:'menu'};return render()}
