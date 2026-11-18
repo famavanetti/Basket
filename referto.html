@@ -506,13 +506,16 @@ function curItem(){var A=S.teams[0],B=S.teams[1];return{a:A.name,b:B.name,d:new 
 var SK='referto_basket_v1',svT=null;
 /* pubblica (con ritardo) nomi squadre e convocati per la pagina Mappa dei tiri su un altro dispositivo */
 var LV_SIG='',LV_T=null;
+/* stato pubblicato per la pagina Referto + Tiri: convocati con punti, falli e se sono in campo, punteggi, falli di squadra, timeout, quarto e cronometro */
+function liveTm(){return S.teams.map(function(T){return{name:T.name||'',mine:T.mine?1:0,s:T.score||0,tf:T.tf||0,to:T.to||0,p:T.p.filter(function(p){return p.on}).map(function(p){return{n:String(p.n),name:p.name||'',pts:p.pts||0,f:p.f||0,c:p.court?1:0,dq:p.dq?1:0}})}})}
 function livePub(){if(!window.rbSync||!rbSync.on||!rbSync.livePush)return;
- var tm=S.teams.map(function(T){return{name:T.name||'',mine:T.mine?1:0,p:T.p.filter(function(p){return p.on}).map(function(p){return{n:String(p.n),name:p.name||''}})}});
+ var tm=liveTm();
  if(!tm.some(function(t){return t.mine||(t.name&&!/^Squadra [AB]$/.test(t.name))}))return;
  if(!S.gid)S.gid='L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
- var sg=JSON.stringify([tm,S.screen=='setup']);if(sg===LV_SIG)return;LV_SIG=sg;clearTimeout(LV_T);var gid=S.gid,st=S.screen=='setup'?'setup':'game';
- LV_T=setTimeout(function(){rbSync.livePush({gid:gid,u:Date.now(),d:new Date().toISOString(),st:st,teams:tm})},2500)}
-addEventListener('online',function(){LV_SIG=''});
+ var setup=S.screen=='setup',sg=JSON.stringify([tm,setup,S.q,S.running?1:0,S.final?1:0,S.running?Math.round((Date.now()/1000+S.clock)/4):S.clock]);if(sg===LV_SIG)return;LV_SIG=sg;clearTimeout(LV_T);var gid=S.gid;
+ LV_T=setTimeout(function(){rbSync.livePush({gid:gid,u:Date.now(),d:new Date().toISOString(),st:S.screen=='setup'?'setup':'game',teams:liveTm(),g:{q:S.q,clock:S.clock,run:S.running?1:0,over:S.final?1:0,ts:Date.now()}})},setup?2500:600)}
+setInterval(function(){if(S.running&&S.screen!='setup'){LV_SIG='';try{livePub()}catch(e){}}},15000);
+addEventListener('online',function(){LV_SIG='';try{livePub()}catch(e){}});
 function save(){try{livePub()}catch(e){}try{var o={S:S,hist:hist.slice(-20)};try{localStorage.setItem(SK,JSON.stringify(o))}catch(e){o.hist=[];localStorage.setItem(SK,JSON.stringify(o))}}catch(e){}}
 function load(){try{var r=localStorage.getItem(SK);if(!r)return false;var o=JSON.parse(r);if(!o||!o.S||!o.S.teams)return false;Object.keys(o.S).forEach(function(k){S[k]=o.S[k]});S.running=false;if(S.modal&&(S.modal.k=='sign'||S.modal.k=='csign'))S.modal=null;hist=o.hist||[];return true}catch(e){return false}}
 function render(){
