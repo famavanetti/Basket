@@ -122,7 +122,7 @@ function newGameFromLive(gid,i){var x=liveDoc(gid);if(!x)return;var ex=D.games.f
   ex={id:uid('g'),gid:gid,mi:i,sq:me.name||'Squadra',av:op.name||'',d:(x.d||'').slice(0,10)||today(),extra:[],roster:mapPlayers(me.p||[],0).concat(mapPlayers(op.p||[],1))};
   mutD(function(){D.games.push(ex);D.cur=ex.id})}
  startGame(ex.id)}
-function startGame(id){R=defR();R.g=id;U.pend=null;U.running=false;U.manual=0;saveR();if(linked())applyLive();else render()}
+function startGame(id){R=defR();R.g=id;U.pend=null;U.running=false;U.manual=0;U.luAsked=0;saveR();if(linked())applyLive();else render()}
 
 /* ================= regole (FIBA) ================= */
 function per(q){return q<=2?1:q<=4?2:q}
@@ -297,7 +297,7 @@ function modalView(){var m=U.modal;if(!m)return'';var h='';
  if(m.k==='lineup'){var d=derive(),ps=ours(G()).slice().sort(byNum),el=ps.filter(function(p){return eligible(d.pl[p.pk])}).length,need=Math.min(5,el);
   h='<h3>Giocatori in campo</h3><div class="hint">'+m.sel.length+'/'+need+' selezionati · tocca per mettere in campo o in panchina · si vedono punti e falli</div><div class="lg">'+
    ps.map(function(p){var x=d.pl[p.pk],ok=eligible(x),on=m.sel.indexOf(p.pk)>=0;return'<button class="lp'+(on?' on':'')+'"'+(ok?' data-a="lutog" data-v="'+esc(p.pk)+'"':' disabled')+'><span class="n">'+esc(p.n||'?')+'</span><small>'+esc(p.nm)+'</small><small>'+x.pts+' pt · '+x.f+' f'+(ok?'':' · fuori')+'</small></button>'}).join('')+'<button class="lp" data-a="extra"><span class="n">＋</span><small>Aggiungi</small></button></div>'+
-   '<div class="mr"><button data-a="mclose">Annulla</button><button class="ok" data-a="luok">Conferma quintetto</button></div>'}
+   '<div class="mr"><button data-a="mclose">Annulla</button><button class="ok" data-a="luok">Conferma quintetto</button></div><button class="mi" data-a="newg" style="color:#ff8a96;margin-top:12px;text-align:center">Azzera e ricomincia (nuova partita)</button>'}
  else if(m.k==='ft'){var sp=pinfo(R.pk);h='<h3>Tiri liberi · #'+esc(sp?sp.n:'?')+'</h3><div class="hint">Registrati: '+(m.res.map(function(r){return r?'●':'✕'}).join(' ')||'nessuno')+'</div><div class="big"><button style="background:var(--ok)" data-a="ftr" data-v="1">● Segnato</button><button style="background:var(--no)" data-a="ftr" data-v="0">✕ Sbagliato</button></div><div class="mr"><button class="ok" data-a="mclose">Fine</button></div>'}
  else if(m.k==='other'){var sp2=pinfo(R.pk);h='<h3>Altri falli · #'+esc(sp2?sp2.n:'?')+'</h3><div class="hint">Due tecnici, due antisportivi, tecnico + antisportivo o uno squalificante: il giocatore esce.</div><button class="mi" data-a="fl" data-v="P">Fallo personale</button><button class="mi" data-a="fl" data-v="T">Tecnico</button><button class="mi" data-a="fl" data-v="U">Antisportivo</button><button class="mi" data-a="fl" data-v="D">Squalificante / flagrante</button><div class="mr"><button data-a="mclose">Annulla</button></div>'}
  else if(m.k==='qend'){var ot=R.q>=4;h='<h3>'+(ot?'Fine '+qlab(R.q):'Fine '+qlab(R.q)+'?')+'</h3><div class="hint">Il cronometro si ferma e puoi impostare il quintetto del prossimo periodo.</div>'+
@@ -311,7 +311,7 @@ function modalView(){var m=U.modal;if(!m)return'';var h='';
  return'<div class="mo" data-a="mbg"><div class="md">'+h+'</div></div>'}
 function render(){var a=$('app'),g=G();
  if(!g){a.innerHTML=setupView();return}
- if(!R.on.length&&!U.modal&&!R.over&&!linked())U.modal={k:'lineup',sel:[]};
+ if(!R.on.length&&!U.modal&&!R.over&&!linked()&&!U.luAsked){U.luAsked=1;U.modal={k:'lineup',sel:[]}}
  a.innerHTML=gameView()+modalView();saveR()}
 
 /* ================= eventi ================= */
@@ -359,7 +359,7 @@ document.addEventListener('click',function(e){
   else if(a==='menu'){U.modal={k:'menu'}}
   else if(a==='prevq'){prevQuarter();return}
   else if(a==='endg'){if(R.over)return;if(!confirm('Terminare la partita adesso? Puoi riaprirla con Annulla.'))return;endQuarter('over');return}
-  else if(a==='newg'){if(!confirm('Chiudere questa partita e iniziarne una nuova? I tiri restano salvati nella Mappa dei tiri.'))return;stop();R=defR();U.pend=null;U.modal=null;saveR()}
+  else if(a==='newg'){if(!confirm('Chiudere questa partita e iniziarne una nuova? I tiri restano salvati nella Mappa dei tiri.'))return;stop();var gg=G();if(gg&&!R.log.length&&!D.shots.some(function(z){return z.g===gg.id})){mutD(function(){D.games=D.games.filter(function(z){return z.id!==gg.id});if(D.cur===gg.id)D.cur=''})}R=defR();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;saveR()}
   render();return}
  var sv=e.target.closest('#ct');if(!sv||U.modal)return;var q=svPt(e,sv);
  if(q.x<-30||q.x>1530||q.y<-30||q.y>YMAX+30)return;
