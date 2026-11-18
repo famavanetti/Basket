@@ -117,6 +117,8 @@ function pinfo(pk){return ours(G()).filter(function(p){return p.pk===pk})[0]}
 function mapPlayers(ps,t){var A=anagGet().filter(function(x){return x.tipo==='giocatore'});
  return ps.map(function(p){var k=norm(p.name),f=t===0&&A.filter(function(x){return norm((x.cognome||'')+(x.nome||''))===k||norm((x.nome||'')+(x.cognome||''))===k})[0];
   return{pk:f?'g|'+norm(f.cognome)+'|'+norm(f.nome):(t===0?'r|':'o|')+norm(p.name)+'|'+norm(p.n),n:String(p.n),nm:p.name,t:t}}).sort(byNum)}
+function hidList(){try{return JSON.parse(localStorage.getItem('rb_rt_hide')||'[]')}catch(e){return[]}}
+function hideLive(g){var h=hidList();if(h.indexOf(g)<0)h.push(g);try{localStorage.setItem('rb_rt_hide',JSON.stringify(h.slice(-50)))}catch(e){}}
 function liveDoc(gid){return(U.live||[]).filter(function(x){return x.gid===gid})[0]}
 function newGameFromLive(gid,i){var x=liveDoc(gid);if(!x)return;var ex=D.games.filter(function(g){return g.gid===gid})[0];
  if(!ex){var t=x.teams||[],me=t[i]||{},op=t[1-i]||{};
@@ -296,11 +298,11 @@ function gameView(){var lv=lvState(),g=G(),d=derive(),qn=Math.min(R.q,4),tf=d.tf
 
 function liveCard(){if(!window.rbSync||!rbSync.on||!rbSync.liveWatch)return'';
  var h='<div class="card"><b>📋 Dal referto</b>';if(U.live===null)return h+'<div class="hint" style="margin-top:6px">Collegamento al referto in corso…</div></div>';
- var Ls=U.live.filter(function(x){return x.u>Date.now()-36*36e5}).sort(function(a,b){return b.u-a.u});
+ var hh=hidList(),Ls=U.live.filter(function(x){return x.u>Date.now()-36*36e5&&hh.indexOf(x.gid)<0}).sort(function(a,b){return b.u-a.u});
  if(!Ls.length)return h+'<div class="hint" style="margin-top:6px">Nessun referto recente. Sull\'altro dispositivo apri il referto e importa i convocati: compare qui da solo.</div></div>';
  return h+Ls.map(function(x){var t=x.teams||[],A=t[0]||{},B=t[1]||{},mi=A.mine&&!B.mine?0:B.mine&&!A.mine?1:-1,ex=D.games.filter(function(g){return g.gid===x.gid})[0],hm=new Date(x.u).toTimeString().slice(0,5);
-  return'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ln)"><b>'+esc(A.name||'?')+'</b> vs <b>'+esc(B.name||'?')+'</b><div class="hint">'+(x.st==='setup'?'in preparazione':'in corso')+' · '+(A.p||[]).length+' + '+(B.p||[]).length+' convocati · aggiornato '+hm+'</div><div class="row">'+
-   (ex||mi>=0?'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="'+(ex&&ex.mi!=null?ex.mi:mi)+'">'+(ex?'Continua':'Usa questa partita')+'</button>':'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="0">Siamo '+esc(A.name||'A')+'</button><button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="1">Siamo '+esc(B.name||'B')+'</button>')+'</div></div>'}).join('')+'</div>'}
+  return'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ln)"><b>'+esc(A.name||'?')+'</b> vs <b>'+esc(B.name||'?')+'</b><div class="hint">'+(x.g&&x.g.over?'terminata':x.st==='setup'?'in preparazione':'in corso')+' · '+(A.p||[]).length+' + '+(B.p||[]).length+' convocati · aggiornato '+hm+'</div><div class="row">'+
+   (ex||mi>=0?'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="'+(ex&&ex.mi!=null?ex.mi:mi)+'">'+(ex?'Continua':'Usa questa partita')+'</button>':'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="0">Siamo '+esc(A.name||'A')+'</button><button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="1">Siamo '+esc(B.name||'B')+'</button>')+'<button data-a="lhide" data-v="'+esc(x.gid)+'">Nascondi</button>'+(ex?'<button data-a="ldel" data-v="'+esc(x.gid)+'" style="color:#ff8a96">Elimina dati</button>':'')+'</div></div>'}).join('')+'</div>'}
 function setupView(){var tm=teams();
  return'<div class="wrap"><h1>⏱ Referto + Tiri</h1><div class="hint">Referto di una sola squadra con la mappa dei tiri. I tiri finiscono nella pagina <b>Mappa dei tiri</b>.</div>'+liveCard()+
   '<div class="card"><b>Oppure crea la partita a mano</b><label for="ns">Squadra</label><select id="ns">'+tm.map(function(t){return'<option>'+esc(t)+'</option>'}).join('')+(tm.length?'':'<option value="">(da inserire a mano)</option>')+'</select>'+
@@ -339,6 +341,8 @@ document.addEventListener('click',function(e){
    if(lv0!=='live'&&(a==='run'||a==='clkok'||a==='luok'||a==='qok'))U.manual=1}
   if(a==='mbg'&&e.target!==b)return;
   if(a==='mbg'||a==='mclose'){U.modal=null}
+  else if(a==='lhide'){hideLive(v);render();return}
+  else if(a==='ldel'){var ge=D.games.filter(function(g){return g.gid===v})[0];if(!ge||!confirm('Eliminare questa partita e tutti i suoi tiri dalla Mappa dei tiri? Non si può annullare.'))return;mutD(function(){D.games=D.games.filter(function(z){return z.id!==ge.id});D.shots=D.shots.filter(function(z){return z.g!==ge.id});if(D.cur===ge.id)D.cur=''});if(R.g===ge.id){R=defR();saveR()}hideLive(v);render();return}
   else if(a==='live'){newGameFromLive(v,+b.dataset.i||0);return}
   else if(a==='crea'){var tm=teams(),sq=tm.length?$('ns').value:($('nsx')&&$('nsx').value.trim());if(!sq){toast('Scrivi il nome della squadra');return}
    var g={id:uid('g'),sq:sq,av:$('nv').value.trim(),d:$('nd').value||today(),extra:[]};mutD(function(){D.games.push(g);D.cur=g.id});startGame(g.id);return}
