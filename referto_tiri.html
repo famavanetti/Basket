@@ -242,8 +242,9 @@ function prevQuarter(){var i=-1;R.log.forEach(function(e,k){if(e.k==='qend')i=k}
  var e=R.log.splice(i,1)[0];R.log.forEach(function(x){if(x.q>e.q)x.q=e.q});
  mutD(function(){D.shots.forEach(function(s){if(s.g===R.g&&s.q>Math.min(e.q,5))s.q=Math.min(e.q,5)})});
  stop();R.q=e.q;R.clock=e.c;R.over=0;U.modal=null;saveR();render();toast('Tornato a '+qlab(e.q))}
+function closeGame(){stop();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;R=defR();saveR();render();toast('Partita terminata: i tiri restano salvati nella Mappa dei tiri')}
 function endQuarter(next){stop();L('qend');
- if(next==='over'){R.over=1}else{R.q++;R.clock=qlen(R.q)}
+ if(next==='over'){closeGame();return}else{R.q++;R.clock=qlen(R.q)}
  U.modal=null;U.pend=null;saveR();render();flash('flg');if(!R.over){U.modal={k:'lineup',sel:R.on.slice()};render()}}
 function applyLineup(sel){var d=derive(),el=Object.keys(d.pl).filter(function(k){return eligible(d.pl[k])}).length,need=Math.min(5,el);
  if(sel.length!==need)return toast('Servono '+need+' giocatori in campo (ora '+sel.length+')');
@@ -378,7 +379,7 @@ document.addEventListener('click',function(e){
   else if(a==='clkok'){var m=Math.max(0,Math.min(99,parseInt($('cm').value)||0)),s2=Math.max(0,Math.min(59,parseInt($('cs').value)||0));R.clock=m*60+s2;U.modal=null;saveR()}
   else if(a==='menu'){U.modal={k:'menu'}}
   else if(a==='prevq'){prevQuarter();return}
-  else if(a==='endg'){if(R.over)return;if(!confirm('Terminare la partita adesso? Puoi riaprirla con Annulla.'))return;endQuarter('over');return}
+  else if(a==='endg'){if(R.over)return;if(!confirm('Terminare la partita? Il referto si chiude e i tiri restano salvati nella Mappa dei tiri.'))return;endQuarter('over');return}
   else if(a==='newg'){if(!confirm('Chiudere questa partita e iniziarne una nuova? I tiri restano salvati nella Mappa dei tiri.'))return;stop();var gg=G();if(gg&&!R.log.length&&!D.shots.some(function(z){return z.g===gg.id})){mutD(function(){D.games=D.games.filter(function(z){return z.id!==gg.id});if(D.cur===gg.id)D.cur=''})}R=defR();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;saveR()}
   render();return}
  var sv=e.target.closest('#ct');if(!sv||U.modal)return;var q=svPt(e,sv);
