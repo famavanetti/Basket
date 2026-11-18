@@ -75,6 +75,7 @@ label{display:block;color:var(--mu);font-size:12px;font-weight:700;margin:10px 0
 .lvb.sh{right:106px}.lvb.off{background:#4a2a08;color:#ffb347;border-color:#ffb347}.lvb.man{background:#ffb347;color:#000;border-color:#ffb347}
 .ac.lk{grid-template-rows:3fr 3fr 1fr 1fr 1fr}.ac.lk .b.w{grid-column:span 1}.ac.lk .b.full{grid-column:1/-1}
 @media (orientation:portrait){.ac.lk{grid-template-rows:84px 50px 50px 50px}.ac.lk .b.w{grid-column:span 2}.ac.lk .b.full{grid-column:1/-1}}
+.eds{position:absolute;left:8px;right:8px;bottom:8px;z-index:3;background:#141b3dee;border:1px solid var(--ln);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}.eds button{min-height:38px;padding:0 10px;font-size:12px}
 .mi{display:block;width:100%;text-align:left;padding:14px;margin-top:6px;min-height:50px;font-size:14px}
 .card{background:var(--pan);border-radius:12px;padding:12px;margin-bottom:10px}
 .wrap{max-width:760px;margin:0 auto;padding:14px;height:100dvh;overflow:auto;-webkit-user-select:text}
@@ -182,6 +183,18 @@ function chkRows(){var rows=[];if(!linked()||!U.lp)return rows;ours(G()).forEach
 function chkHtml(){if(!linked()||!U.lp)return'';var r=chkRows();
  if(!r.length)return'<div class="hint" style="margin-top:10px">✔ Punti dei tiri segnati e punti del referto coincidono.</div>';
  return'<h3 style="margin-top:14px;font-size:15px">Controllo con il referto del tavolo</h3><div class="hint">Punti dei tiri segnati sulla mappa e punti del tavolo (i liberi sono solo del tavolo). In rosso: sulla mappa hai più punti del tavolo.</div><table class="tbl"><tr><th>Giocatore</th><th>Mappa</th><th>Tavolo</th></tr>'+r.map(function(x){return'<tr><td>#'+esc(x.p.n)+' '+esc(x.p.nm)+'</td><td'+(x.bad?' style="color:#ff6b78;font-weight:900"':'')+'>'+x.sp+' pt</td><td>'+x.rp+' pt</td></tr>'}).join('')+'</table>'}
+/* ================= modifica di un tiro specifico (anche di chi e' in panchina) ================= */
+function shotLog(id){return R.log.filter(function(e){return e.k==='shot'&&e.sid===id})[0]}
+function shotById(id){return D.shots.filter(function(z){return z.id===id})[0]}
+function editTap(q){var x=Math.max(0,Math.min(1500,q.x)),y=Math.max(0,Math.min(YMAX,q.y));
+ if(U.emv&&U.esel){var nv=0;mutD(function(){var s=shotById(U.esel);if(s){s.x=Math.round(x);s.y=Math.round(y);s.v=is3(x,y)?3:2;nv=s.v;var e=shotLog(s.id);if(e)e.v=s.v}});U.emv=0;saveR();render();toast('Tiro spostato: da '+nv);return}
+ var best=null,bd=1e9;shown().forEach(function(s){var d=Math.hypot(s.x-x,s.y-y);if(d<bd){bd=d;best=s}});U.esel=best&&bd<=90?best.id:'';render()}
+function edPanel(){if(!U.ed)return'';var s=shotById(U.esel);
+ if(!s)return'<div class="eds"><span>✎ <b>Modifica tiri</b>: tocca un tiro per selezionarlo. Per inserirne uno nuovo disattiva Modifica.</span><button data-a="ed">Fine modifica</button></div>';
+ return'<div class="eds"><span><b>#'+esc(s.n)+'</b> '+esc(s.nm)+' · '+(s.q<5?'Q'+s.q:'OT')+' · '+s.v+' pt · '+(s.r?'segnato':'sbagliato')+'</span>'+
+  '<button style="background:var(--no)" data-a="edel">🗑 Elimina</button><button class="'+(U.emv?'gold':'')+'" data-a="emove">✥ Sposta</button><button data-a="eflip">⇄ '+(s.r?'Sbagliato':'Segnato')+'</button>'+
+  [1,2,3,4,5].map(function(q){return'<button class="'+(s.q===q?'gold':'')+'" data-a="eqs" data-v="'+q+'">'+(q<5?'Q'+q:'OT')+'</button>'}).join('')+
+  (U.emv?'<span style="color:var(--gold);font-weight:800;flex-basis:100%">Tocca sul campo il nuovo punto del tiro…</span>':'')+'<button data-a="edone">Chiudi</button></div>'}
 /* ================= derivati dal log (unica fonte di verità) ================= */
 function derive(){var g=G(),m={},o={pl:m,our:0,opp:0,tf:{},to:{}};
  ours(g).forEach(function(p){m[p.pk]={p:p,pts:0,f:0,t1:0,u1:0,f2:0,dq:0,fgm:0,fga:0,ftm:0,fta:0}});
@@ -191,7 +204,8 @@ function derive(){var g=G(),m={},o={pl:m,our:0,opp:0,tf:{},to:{}};
   else if(e.k==='foul'){if(x){x.f++;if(e.fl==='T')x.t1++;if(e.fl==='U')x.u1++;if(e.fl==='D')x.f2++}var q=Math.min(e.q,4);o.tf[q]=(o.tf[q]||0)+1}
   else if(e.k==='to'){var p=per(e.q);o.to[p]=(o.to[p]||0)+1}
   else if(e.k==='opp'){o.opp+=e.pts}});
- Object.keys(m).forEach(function(k){var x=m[k];if(x.t1>=2||x.u1>=2||(x.t1>=1&&x.u1>=1)||x.f2>=1)x.dq=1});
+ Object.keys(m).forEach(function(k){var x=m[k];x.fga=0;x.fgm=0;if(x.t1>=2||x.u1>=2||(x.t1>=1&&x.u1>=1)||x.f2>=1)x.dq=1});
+ D.shots.forEach(function(s){var x=s.g===R.g&&m[s.pk];if(x){x.fga++;if(s.r)x.fgm++}});
  if(linked()&&U.lt){o.our=U.lt.s;o.opp=U.lt.os;o.tf[Math.min(R.q,4)]=U.lt.tf;o.to[per(R.q)]=U.lt.to;Object.keys(m).forEach(function(k){var lp=U.lp&&U.lp[String(m[k].p.n)];if(lp){m[k].pts=lp.pts||0;m[k].f=lp.f||0;m[k].dq=lp.dq?1:0}})}
  return o}
 function eligible(x){return x&&!x.dq&&x.f<5}
@@ -245,9 +259,9 @@ function court(dots,pend){var Ls='fill="none" stroke="#6f7bb0" stroke-width="7"'
  '<path d="M570 580 A180 180 0 0 0 930 580" '+Ls+'/><path d="M570 580 A180 180 0 0 1 930 580" '+Ls+' stroke-dasharray="22 18"/>'+
  '<path d="M625 120 V157.5 A125 125 0 0 0 875 157.5 V120" '+Ls+'/><path d="M90 0 V299 A675 675 0 0 0 1410 299 V0" '+Ls+'/>'+
  '<path d="M660 120 H840 M750 120 V135" '+Ls+' stroke-width="11"/><circle cx="750" cy="157.5" r="22.5" '+Ls+' stroke="#d9b52a"/>'+dots+(pend||'')+'</svg>'}
-function dot(s){var c=s.r?'#2ecc71':'#ff5d6c';
- return s.r?'<circle cx="'+s.x+'" cy="'+s.y+'" r="30" fill="'+c+'" fill-opacity=".9" stroke="#06240f" stroke-width="5"/><text x="'+s.x+'" y="'+(s.y+11)+'" fill="#06240f" font-size="32" font-weight="900" text-anchor="middle" style="pointer-events:none">'+esc(s.n)+'</text>'
- :'<path d="M'+(s.x-24)+' '+(s.y-24)+' L'+(s.x+24)+' '+(s.y+24)+' M'+(s.x+24)+' '+(s.y-24)+' L'+(s.x-24)+' '+(s.y+24)+'" stroke="'+c+'" stroke-width="14" stroke-linecap="round"/><text x="'+(s.x+34)+'" y="'+(s.y-26)+'" fill="#ff9aa5" font-size="30" font-weight="900" style="pointer-events:none">'+esc(s.n)+'</text>'}
+function dot(s){var c=s.r?'#2ecc71':'#ff5d6c',ring=s.id===U.esel?'<circle cx="'+s.x+'" cy="'+s.y+'" r="52" fill="none" stroke="#ffd93a" stroke-width="9"/>':'';
+ return ring+(s.r?'<circle cx="'+s.x+'" cy="'+s.y+'" r="30" fill="'+c+'" fill-opacity=".9" stroke="#06240f" stroke-width="5"/><text x="'+s.x+'" y="'+(s.y+11)+'" fill="#06240f" font-size="32" font-weight="900" text-anchor="middle" style="pointer-events:none">'+esc(s.n)+'</text>'
+ :'<path d="M'+(s.x-24)+' '+(s.y-24)+' L'+(s.x+24)+' '+(s.y+24)+' M'+(s.x+24)+' '+(s.y-24)+' L'+(s.x-24)+' '+(s.y+24)+'" stroke="'+c+'" stroke-width="14" stroke-linecap="round"/><text x="'+(s.x+34)+'" y="'+(s.y-26)+'" fill="#ff9aa5" font-size="30" font-weight="900" style="pointer-events:none">'+esc(s.n)+'</text>')}
 function viewPk(){return U.fp==='pick'?U.vpk:R.pk}
 function shown(){var vk=viewPk();return D.shots.filter(function(s){return s.g===R.g&&(U.fp==='all'||s.pk===vk)&&(!U.fq||s.q===U.fq)})}
 function sumCell(a){var t=a.length,mk=a.filter(function(s){return s.r}).length;return t?mk+'/'+t:'–'}
@@ -268,9 +282,9 @@ function gameView(){var lv=lvState(),g=G(),d=derive(),qn=Math.min(R.q,4),tf=d.tf
   return'<button class="p'+(R.pk===x.p.pk?' sel':'')+'" data-a="pl" data-v="'+esc(x.p.pk)+'" aria-label="'+esc(x.p.nm)+'"><span class="bars">'+bars(x.f)+'</span><span class="n">'+esc(x.p.n||'?')+'</span><small>'+x.pts+' pt · '+x.f+' f</small><em>'+x.fgm+'/'+x.fga+'</em></button>'}).join('')+(lv==='live'?'<button class="bench" data-a="sum">TABELLA TIRI</button>':'<button class="bench" data-a="lineup">PANCHINA / CAMBI</button>')+'</div>';
  var fl='<div class="fl"><button class="c'+(U.fp==='sel'||U.fp==='pick'?' on':'')+'" data-a="fp" data-v="sel">'+(sp?'#'+esc(sp.n):'Gioc.')+'</button><button class="c'+(U.fp==='all'?' on':'')+'" data-a="fp" data-v="all">Tutti</button><hr>'+
   [[0,'Tot'],[1,'Q1'],[2,'Q2'],[3,'Q3'],[4,'Q4'],[5,'OT']].map(function(o){return'<button class="c'+(U.fq===o[0]?' on':'')+'" data-a="fq" data-v="'+o[0]+'">'+o[1]+'</button>'}).join('')+
-  '<hr><button class="c'+(U.zv?' on':'')+'" data-a="zv">Zone</button><button class="c" data-a="sum">Tabella</button><div class="fs"><b>'+mk+'/'+sh.length+'</b>'+(sh.length?Math.round(100*mk/sh.length)+'%':'–')+'</div></div>';
+  '<hr><button class="c'+(U.ed?' on':'')+'" data-a="ed">Modifica</button><button class="c'+(U.zv?' on':'')+'" data-a="zv">Zone</button><button class="c" data-a="sum">Tabella</button><div class="fs"><b>'+mk+'/'+sh.length+'</b>'+(sh.length?Math.round(100*mk/sh.length)+'%':'–')+'</div></div>';
  var pend=U.pend?'<circle cx="'+U.pend.x+'" cy="'+U.pend.y+'" r="48" fill="none" stroke="#ffd93a" stroke-width="10"/><circle cx="'+U.pend.x+'" cy="'+U.pend.y+'" r="12" fill="#ffd93a"/><text x="'+U.pend.x+'" y="'+Math.max(60,U.pend.y-68)+'" fill="#ffd93a" font-size="54" font-weight="900" text-anchor="middle" style="pointer-events:none">'+U.pend.v+' PUNTI</text>':'';
- var ct='<div class="court"><div class="cap">'+(U.fp!=='all'?(sp?'Tiri di #'+esc(sp.n)+' '+esc(sp.nm):'Scegli un giocatore'):'Tutti i tiri')+' · '+(U.fq?qlab(U.fq<5?U.fq:5):'tutti i quarti')+'</div>'+(U.zv?zoneSvg(sh)+'<div style="position:absolute;left:12px;bottom:8px;right:12px;z-index:2">'+zoneLegend()+'</div>':court(sh.map(dot).join(''),pend))+'</div>';
+ var ct='<div class="court"><div class="cap">'+(U.fp!=='all'?(sp?'Tiri di #'+esc(sp.n)+' '+esc(sp.nm):'Scegli un giocatore'):'Tutti i tiri')+' · '+(U.fq?qlab(U.fq<5?U.fq:5):'tutti i quarti')+'</div>'+(U.zv?zoneSvg(sh)+'<div style="position:absolute;left:12px;bottom:8px;right:12px;z-index:2">'+zoneLegend()+'</div>':court(sh.map(dot).join(''),pend))+(U.zv?'':edPanel())+'</div>';
  var ac='<div class="ac"><button class="b r1" data-a="res" data-v="1">● Segnato</button><button class="b r0" data-a="res" data-v="0">✕ Sbagliato</button>'+
   '<div class="g3"><button class="b'+(U.pend&&U.pend.v===2?' on':'')+'" data-a="pts" data-v="2">2</button><button class="b'+(U.pend&&U.pend.v===3?' on':'')+'" data-a="pts" data-v="3">3</button><button class="b" data-a="ft" style="flex:1.5">T. liberi</button></div>'+
   '<button class="b w" data-a="foul">Fallo</button><button class="b w" data-a="other">Altri falli</button><button class="b w" data-a="to">Timeout</button><button class="b w" data-a="undo">↩ Annulla</button>'+
@@ -304,8 +318,8 @@ function modalView(){var m=U.modal;if(!m)return'';var h='';
    (ot?'<button class="mi" data-a="qok" data-v="next" style="background:var(--blue)">Inizia supplementare ('+qlab(R.q+1)+')</button><button class="mi" data-a="qok" data-v="over" style="background:var(--no)">Termina la partita</button>':'<button class="mi" data-a="qok" data-v="next" style="background:var(--ok)">Conferma: vai a '+qlab(R.q+1)+'</button>')+'<div class="mr"><button data-a="mclose">Annulla</button></div>'}
  else if(m.k==='clk'){h='<h3>Imposta cronometro</h3><div class="row" style="margin:10px 0"><input id="cm" type="number" min="0" max="99" inputmode="numeric" value="'+Math.floor(R.clock/60)+'"><input id="cs" type="number" min="0" max="59" inputmode="numeric" value="'+R.clock%60+'"></div><div class="hint">minuti · secondi</div><div class="mr"><button data-a="mclose">Annulla</button><button class="ok" data-a="clkok">Imposta</button></div>'}
  else if(m.k==='sum'){var psx=ours(G()).slice().sort(byNum),shx=D.shots.filter(function(s){return s.g===R.g}),cols=[1,2,3,4,5];
-  h='<h3>Tiri per quarto</h3><div class="hint">Tocca un giocatore per vedere i suoi tiri sul campo, un quarto per vedere tutta la squadra in quel periodo, Tot per tutta la gara.</div><div style="overflow:auto"><table class="tbl"><tr><th>Giocatore</th>'+cols.map(function(q){return'<th><button class="c" data-a="sumq" data-v="'+q+'">'+(q<5?'Q'+q:'OT')+'</button></th>'}).join('')+'<th><button class="c" data-a="sumq" data-v="0">Tot</button></th></tr>'+
-   psx.filter(function(p){return shx.some(function(s){return s.pk===p.pk})}).map(function(p){var a=shx.filter(function(s){return s.pk===p.pk});return'<tr data-a="sumpl" data-v="'+esc(p.pk)+'"><td>#'+esc(p.n)+' '+esc(p.nm)+'</td>'+cols.map(function(q){return'<td>'+sumCell(a.filter(function(s){return s.q===q}))+'</td>'}).join('')+'<td><b>'+sumCell(a)+'</b></td></tr>'}).join('')+
+  h='<h3>Tiri per quarto</h3><div class="hint">Tocca un giocatore (anche se è in panchina) per vedere, modificare, eliminare o aggiungere i suoi tiri. Tocca un quarto per vedere tutta la squadra in quel periodo, Tot per tutta la gara.</div><div style="overflow:auto"><table class="tbl"><tr><th>Giocatore</th>'+cols.map(function(q){return'<th><button class="c" data-a="sumq" data-v="'+q+'">'+(q<5?'Q'+q:'OT')+'</button></th>'}).join('')+'<th><button class="c" data-a="sumq" data-v="0">Tot</button></th></tr>'+
+   psx.map(function(p){var a=shx.filter(function(s){return s.pk===p.pk});return'<tr data-a="sumpl" data-v="'+esc(p.pk)+'"><td>#'+esc(p.n)+' '+esc(p.nm)+'</td>'+cols.map(function(q){return'<td>'+sumCell(a.filter(function(s){return s.q===q}))+'</td>'}).join('')+'<td><b>'+sumCell(a)+'</b></td></tr>'}).join('')+
    '<tr class="tt"><td><b>Squadra</b></td>'+cols.map(function(q){return'<td>'+sumCell(shx.filter(function(s){return s.q===q}))+'</td>'}).join('')+'<td><b>'+sumCell(shx)+'</b></td></tr></table></div>'+(shx.length?'':'<div class="hint" style="margin-top:8px">Ancora nessun tiro registrato.</div>')+chkHtml()+'<div class="mr"><button class="ok" data-a="mclose">Chiudi</button></div>'}
  else if(m.k==='menu'){h='<h3>Menu</h3><button class="mi" data-a="sum">📊 Tiri per giocatore e quarto</button><button class="mi" data-a="prevq">↩ Torna al quarto precedente</button><button class="mi" data-a="lineup">Giocatori e quintetto</button><button class="mi" onclick="location.href=\'tiri.html\'">🎯 Mappa dei tiri (statistiche)</button><button class="mi" onclick="location.href=\'home.html\'">← Home</button>'+(R.over?'':'<button class="mi" data-a="endg" style="color:#ff8a96">⏹ Termina partita</button>')+''+(G()&&G().gid?'<button class="mi" data-a="lnk">'+(R.nolink?'🔗 Ricollega al referto del tavolo':'⛓ Scollega dal referto (gestisco a mano)')+'</button>':'')+'<button class="mi" data-a="newg" style="color:#ff8a96">Nuova partita…</button><div class="mr"><button data-a="mclose">Chiudi</button></div>'}
  return'<div class="mo" data-a="mbg"><div class="md">'+h+'</div></div>'}
@@ -329,8 +343,14 @@ document.addEventListener('click',function(e){
    var g={id:uid('g'),sq:sq,av:$('nv').value.trim(),d:$('nd').value||today(),extra:[]};mutD(function(){D.games.push(g);D.cur=g.id});startGame(g.id);return}
   else if(a==='pl'){R.pk=v;U.pend=null;if(U.fp==='pick')U.fp='sel'}
   else if(a==='zv'){U.zv=!U.zv;U.pend=null}
+  else if(a==='ed'){U.ed=!U.ed;U.esel='';U.emv=0;U.pend=null}
+  else if(a==='edone'){U.esel='';U.emv=0}
+  else if(a==='emove'){if(U.esel)U.emv=!U.emv}
+  else if(a==='edel'){var id=U.esel;if(id){mutD(function(){D.shots=D.shots.filter(function(z){return z.id!==id})});var li=-1;R.log.forEach(function(e,k){if(e.k==='shot'&&e.sid===id)li=k});if(li>=0)R.log.splice(li,1);U.esel='';U.emv=0;saveR();toast('Tiro eliminato')}}
+  else if(a==='eflip'){var fs=shotById(U.esel);if(fs){mutD(function(){var z=shotById(U.esel);z.r=z.r?0:1;var e=shotLog(z.id);if(e)e.r=z.r})}}
+  else if(a==='eqs'){var fq=shotById(U.esel);if(fq){mutD(function(){var z=shotById(U.esel);z.q=+v;var e=shotLog(z.id);if(e)e.q=+v})}}
   else if(a==='sum'){U.modal={k:'sum'}}
-  else if(a==='sumpl'){U.fp='pick';U.vpk=v;U.modal=null}
+  else if(a==='sumpl'){U.fp='pick';U.vpk=v;R.pk=v;U.ed=1;U.esel='';U.emv=0;U.pend=null;U.modal=null;saveR()}
   else if(a==='sumq'){U.fq=+v;U.fp='all';U.modal=null}
   else if(a==='fp'){U.fp=v}
   else if(a==='fq'){U.fq=+v}
@@ -363,6 +383,7 @@ document.addEventListener('click',function(e){
   render();return}
  var sv=e.target.closest('#ct');if(!sv||U.modal)return;var q=svPt(e,sv);
  if(q.x<-30||q.x>1530||q.y<-30||q.y>YMAX+30)return;
+ if(U.ed){editTap(q);return}
  if(!R.pk){toast('Scegli prima il giocatore');return}
  var x=Math.max(0,Math.min(1500,q.x)),y=Math.max(0,Math.min(YMAX,q.y));U.pend={x:x,y:y,v:is3(x,y)?3:2};render()});
 if(window.rbSync&&rbSync.on&&rbSync.liveWatch)rbSync.liveWatch(function(r){U.live=r;U.liveErr=!Array.isArray(r);var a=document.activeElement;
