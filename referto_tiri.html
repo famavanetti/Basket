@@ -85,6 +85,7 @@ label{display:block;color:var(--mu);font-size:12px;font-weight:700;margin:10px 0
 </style></head><body>
 <div id="app"></div><div id="toast"></div>
 <script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
+<script src="cal.js"></script>
 <script>
 richiediLogin();
 /* ================= dati =================
@@ -99,7 +100,7 @@ function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slic
 function toast(m){var t=$('toast');t.textContent=m;t.className='on';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className=''},1800)}
 function loadT(){try{var o=JSON.parse(localStorage.getItem(KT)||'null');if(o&&Array.isArray(o.games)&&Array.isArray(o.shots))return o}catch(e){}return{games:[],shots:[],cur:''}}
 var D=loadT();
-function mutD(fn){D=loadT();fn();try{localStorage.setItem(KT,JSON.stringify(D))}catch(e){toast('Memoria piena: esporta un backup dalla pagina Mappa dei tiri')}}
+function mutD(fn){D=loadT();fn();try{localStorage.setItem(KT,JSON.stringify(D))}catch(e){toast('Memoria piena: invia le partite a Archivio e statistiche')}}
 function defR(){return{g:'',q:1,clock:600,log:[],on:[],pk:'',over:0}}
 function loadR(){try{var o=JSON.parse(localStorage.getItem(KR)||'null');if(o&&Array.isArray(o.log))return Object.assign(defR(),o)}catch(e){}return defR()}
 var R=loadR();
@@ -244,7 +245,19 @@ function prevQuarter(){var i=-1;R.log.forEach(function(e,k){if(e.k==='qend')i=k}
  var e=R.log.splice(i,1)[0];R.log.forEach(function(x){if(x.q>e.q)x.q=e.q});
  mutD(function(){D.shots.forEach(function(s){if(s.g===R.g&&s.q>Math.min(e.q,5))s.q=Math.min(e.q,5)})});
  stop();R.q=e.q;R.clock=e.c;R.over=0;U.modal=null;saveR();render();toast('Tornato a '+qlab(e.q))}
-function closeGame(){stop();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;R=defR();saveR();render();toast('Partita terminata: i tiri restano salvati nella Mappa dei tiri')}
+function sendTiri(id,quiet){var g=D.games.filter(function(z){return z.id===id})[0];if(!g)return Promise.resolve(0);
+ var sh=D.shots.filter(function(z){return z.g===id});
+ if(!sh.length){if(!quiet)toast('Nessun tiro da inviare');return Promise.resolve(0)}
+ if(!window.rbSync||!rbSync.on||!rbSync.pushGame){if(!quiet)toast('Sincronizzazione non attiva: i tiri restano su questo tablet');return Promise.resolve(0)}
+ var key='T|'+(g.gid||g.id)+'|'+(g.mi||0),doc={uid:key,id:key,a:g.sq||'',b:g.av||'',d:(g.d||today())+'T12:00:00',sa:g.sa==null?'':g.sa,sb:g.sb==null?'':g.sb,
+  tiri:{gid:g.gid||'',mi:g.mi||0,sq:g.sq||'',av:g.av||'',d:g.d||today(),roster:ours(g).map(function(p){return{pk:p.pk,n:p.n,nm:p.nm}}),
+   shots:sh.map(function(z){return{pk:z.pk,n:z.n,x:z.x,y:z.y,v:z.v,r:z.r,q:z.q}})}};
+ return rbSync.pushGame(doc).then(function(){mutD(function(){var x=D.games.filter(function(z){return z.id===id})[0];if(x)x.sent=sh.length});if(!quiet)toast('Inviati '+sh.length+' tiri all\'Archivio e statistiche');render();return sh.length},function(){if(!quiet)toast('Invio non riuscito: riprova con internet');return 0})}
+function savedCard(){var gs=D.games.filter(function(g){return D.shots.some(function(z){return z.g===g.id})});if(!gs.length)return'';
+ return'<div class="card"><b>🎯 Partite con tiri su questo tablet</b><div class="hint" style="margin:4px 0 6px">Dopo l\'invio i tiri compaiono in <b>Archivio e statistiche</b> (anche sugli altri dispositivi).</div>'+gs.map(function(g){var n=D.shots.filter(function(z){return z.g===g.id}).length;
+  return'<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--ln)"><b>'+esc(g.sq||'')+'</b> vs <b>'+esc(g.av||'')+'</b><div class="hint">'+esc(g.d||'')+' · '+n+' tiri · '+(g.sent===n?'✓ inviata':g.sent?'modificata dopo l\'invio':'non ancora inviata')+'</div><div class="row">'+(g.sent===n?'':'<button class="gold" data-a="gsend" data-v="'+g.id+'">Invia all\'archivio</button>')+'<button data-a="gdel" data-v="'+g.id+'" style="color:#ff8a96">Elimina dal tablet</button></div></div>'}).join('')+'</div>'}
+function closeGame(){var gg=G(),gid=gg&&gg.id;if(gg){var d=derive();mutD(function(){var x=D.games.filter(function(z){return z.id===gid})[0];if(x){x.sa=d.our;x.sb=d.opp;x.end=1}})}
+ stop();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;R=defR();saveR();render();toast('Partita terminata');if(gid)sendTiri(gid,false)}
 function endQuarter(next){stop();L('qend');
  if(next==='over'){closeGame();return}else{R.q++;R.clock=qlen(R.q)}
  U.modal=null;U.pend=null;saveR();render();flash('flg');if(!R.over){U.modal={k:'lineup',sel:R.on.slice()};render()}}
@@ -304,10 +317,10 @@ function liveCard(){if(!window.rbSync||!rbSync.on||!rbSync.liveWatch)return'';
   return'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ln)"><b>'+esc(A.name||'?')+'</b> vs <b>'+esc(B.name||'?')+'</b><div class="hint">'+(x.g&&x.g.over?'terminata':x.st==='setup'?'in preparazione':'in corso')+' · '+(A.p||[]).length+' + '+(B.p||[]).length+' convocati · aggiornato '+hm+'</div><div class="row">'+
    (ex||mi>=0?'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="'+(ex&&ex.mi!=null?ex.mi:mi)+'">'+(ex?'Continua':'Usa questa partita')+'</button>':'<button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="0">Siamo '+esc(A.name||'A')+'</button><button class="gold" data-a="live" data-v="'+esc(x.gid)+'" data-i="1">Siamo '+esc(B.name||'B')+'</button>')+'<button data-a="lhide" data-v="'+esc(x.gid)+'">Nascondi</button>'+(ex?'<button data-a="ldel" data-v="'+esc(x.gid)+'" style="color:#ff8a96">Elimina dati</button>':'')+'</div></div>'}).join('')+'</div>'}
 function setupView(){var tm=teams();
- return'<div class="wrap"><h1>⏱ Referto + Tiri</h1><div class="hint">Referto di una sola squadra con la mappa dei tiri. I tiri finiscono nella pagina <b>Mappa dei tiri</b>.</div>'+liveCard()+
+ return'<div class="wrap"><h1>⏱ Referto + Tiri</h1><div class="hint">Referto di una sola squadra con la mappa dei tiri. A fine partita i tiri vanno in <b>Archivio e statistiche</b>.</div>'+liveCard()+savedCard()+
   '<div class="card"><b>Oppure crea la partita a mano</b><label for="ns">Squadra</label><select id="ns">'+tm.map(function(t){return'<option>'+esc(t)+'</option>'}).join('')+(tm.length?'':'<option value="">(da inserire a mano)</option>')+'</select>'+
   (tm.length?'':'<label for="nsx">Nome squadra</label><input id="nsx" placeholder="es. U16 Maschile">')+
-  '<label for="nv">Avversario</label><input id="nv" placeholder="es. Virtus Cernusco" autocomplete="off"><label for="nd">Data</label><input id="nd" type="date" value="'+today()+'">'+
+  '<label for="nv">Avversario</label><div class="row"><input id="nv" placeholder="es. Virtus Cernusco" autocomplete="off" style="flex:1"><button data-a="cal">📅 Calendario</button></div><label for="nd">Data</label><input id="nd" type="date" value="'+today()+'">'+
   '<div class="row" style="margin-top:14px"><button class="gold" data-a="crea">Inizia partita</button></div></div><div class="row"><button onclick="location.href=\'home.html\'">← Home</button></div></div>'}
 
 function modalView(){var m=U.modal;if(!m)return'';var h='';
@@ -324,7 +337,7 @@ function modalView(){var m=U.modal;if(!m)return'';var h='';
   h='<h3>Tiri per quarto</h3><div class="hint">Tocca un giocatore (anche se è in panchina) per vedere, modificare, eliminare o aggiungere i suoi tiri. Tocca un quarto per vedere tutta la squadra in quel periodo, Tot per tutta la gara.</div><div style="overflow:auto"><table class="tbl"><tr><th>Giocatore</th>'+cols.map(function(q){return'<th><button class="c" data-a="sumq" data-v="'+q+'">'+(q<5?'Q'+q:'OT')+'</button></th>'}).join('')+'<th><button class="c" data-a="sumq" data-v="0">Tot</button></th></tr>'+
    psx.map(function(p){var a=shx.filter(function(s){return s.pk===p.pk});return'<tr data-a="sumpl" data-v="'+esc(p.pk)+'"><td>#'+esc(p.n)+' '+esc(p.nm)+'</td>'+cols.map(function(q){return'<td>'+sumCell(a.filter(function(s){return s.q===q}))+'</td>'}).join('')+'<td><b>'+sumCell(a)+'</b></td></tr>'}).join('')+
    '<tr class="tt"><td><b>Squadra</b></td>'+cols.map(function(q){return'<td>'+sumCell(shx.filter(function(s){return s.q===q}))+'</td>'}).join('')+'<td><b>'+sumCell(shx)+'</b></td></tr></table></div>'+(shx.length?'':'<div class="hint" style="margin-top:8px">Ancora nessun tiro registrato.</div>')+chkHtml()+'<div class="mr"><button class="ok" data-a="mclose">Chiudi</button></div>'}
- else if(m.k==='menu'){h='<h3>Menu</h3><button class="mi" data-a="sum">📊 Tiri per giocatore e quarto</button><button class="mi" data-a="prevq">↩ Torna al quarto precedente</button><button class="mi" data-a="lineup">Giocatori e quintetto</button><button class="mi" onclick="location.href=\'tiri.html\'">🎯 Mappa dei tiri (statistiche)</button><button class="mi" onclick="location.href=\'home.html\'">← Home</button>'+(R.over?'':'<button class="mi" data-a="endg" style="color:#ff8a96">⏹ Termina partita</button>')+''+(G()&&G().gid?'<button class="mi" data-a="lnk">'+(R.nolink?'🔗 Ricollega al referto del tavolo':'⛓ Scollega dal referto (gestisco a mano)')+'</button>':'')+'<button class="mi" data-a="newg" style="color:#ff8a96">Nuova partita…</button><div class="mr"><button data-a="mclose">Chiudi</button></div>'}
+ else if(m.k==='menu'){h='<h3>Menu</h3><button class="mi" data-a="sum">📊 Tiri per giocatore e quarto</button><button class="mi" data-a="prevq">↩ Torna al quarto precedente</button><button class="mi" data-a="lineup">Giocatori e quintetto</button><button class="mi" onclick="location.href=\'statistiche.html\'">📊 Archivio e statistiche</button><button class="mi" onclick="location.href=\'home.html\'">← Home</button>'+(R.over?'':'<button class="mi" data-a="endg" style="color:#ff8a96">⏹ Termina partita</button>')+''+(G()&&G().gid?'<button class="mi" data-a="lnk">'+(R.nolink?'🔗 Ricollega al referto del tavolo':'⛓ Scollega dal referto (gestisco a mano)')+'</button>':'')+'<button class="mi" data-a="newg" style="color:#ff8a96">Nuova partita…</button><div class="mr"><button data-a="mclose">Chiudi</button></div>'}
  return'<div class="mo" data-a="mbg"><div class="md">'+h+'</div></div>'}
 function render(){var a=$('app'),g=G();
  if(!g){a.innerHTML=setupView();return}
@@ -341,8 +354,11 @@ document.addEventListener('click',function(e){
    if(lv0!=='live'&&(a==='run'||a==='clkok'||a==='luok'||a==='qok'))U.manual=1}
   if(a==='mbg'&&e.target!==b)return;
   if(a==='mbg'||a==='mclose'){U.modal=null}
+  else if(a==='cal'){if(!window.rbCal)return toast('Calendario non disponibile');var o=$('nv'),dd=$('nd');var ns=$('ns')||$('nsx');rbCal.open({me:ns?ns.value:'',onPick:function(opp,g){if(o)o.value=opp;if(g&&g.d&&dd)dd.value=g.d}});return}
+  else if(a==='gsend'){sendTiri(v);return}
+  else if(a==='gdel'){var gx=D.games.filter(function(g){return g.id===v})[0];if(!gx||!confirm('Eliminare dal tablet questa partita e i suoi tiri? '+(gx.sent?'Restano nell\'Archivio e statistiche.':'NON sono stati inviati: andranno persi.')))return;mutD(function(){D.games=D.games.filter(function(z){return z.id!==v});D.shots=D.shots.filter(function(z){return z.g!==v});if(D.cur===v)D.cur=''});render();return}
   else if(a==='lhide'){hideLive(v);render();return}
-  else if(a==='ldel'){var ge=D.games.filter(function(g){return g.gid===v})[0];if(!ge||!confirm('Eliminare questa partita e tutti i suoi tiri dalla Mappa dei tiri? Non si può annullare.'))return;mutD(function(){D.games=D.games.filter(function(z){return z.id!==ge.id});D.shots=D.shots.filter(function(z){return z.g!==ge.id});if(D.cur===ge.id)D.cur=''});if(R.g===ge.id){R=defR();saveR()}hideLive(v);render();return}
+  else if(a==='ldel'){var ge=D.games.filter(function(g){return g.gid===v})[0];if(!ge||!confirm('Eliminare questa partita e tutti i suoi tiri dal tablet? Non si può annullare.'))return;mutD(function(){D.games=D.games.filter(function(z){return z.id!==ge.id});D.shots=D.shots.filter(function(z){return z.g!==ge.id});if(D.cur===ge.id)D.cur=''});if(R.g===ge.id){R=defR();saveR()}hideLive(v);render();return}
   else if(a==='live'){newGameFromLive(v,+b.dataset.i||0);return}
   else if(a==='crea'){var tm=teams(),sq=tm.length?$('ns').value:($('nsx')&&$('nsx').value.trim());if(!sq){toast('Scrivi il nome della squadra');return}
    var g={id:uid('g'),sq:sq,av:$('nv').value.trim(),d:$('nd').value||today(),extra:[]};mutD(function(){D.games.push(g);D.cur=g.id});startGame(g.id);return}
@@ -383,8 +399,8 @@ document.addEventListener('click',function(e){
   else if(a==='clkok'){var m=Math.max(0,Math.min(99,parseInt($('cm').value)||0)),s2=Math.max(0,Math.min(59,parseInt($('cs').value)||0));R.clock=m*60+s2;U.modal=null;saveR()}
   else if(a==='menu'){U.modal={k:'menu'}}
   else if(a==='prevq'){prevQuarter();return}
-  else if(a==='endg'){if(R.over)return;if(!confirm('Terminare la partita? Il referto si chiude e i tiri restano salvati nella Mappa dei tiri.'))return;endQuarter('over');return}
-  else if(a==='newg'){if(!confirm('Chiudere questa partita e iniziarne una nuova? I tiri restano salvati nella Mappa dei tiri.'))return;stop();var gg=G();if(gg&&!R.log.length&&!D.shots.some(function(z){return z.g===gg.id})){mutD(function(){D.games=D.games.filter(function(z){return z.id!==gg.id});if(D.cur===gg.id)D.cur=''})}R=defR();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;saveR()}
+  else if(a==='endg'){if(R.over)return;if(!confirm('Terminare la partita? Il referto si chiude e i tiri restano salvati in Archivio e statistiche.'))return;endQuarter('over');return}
+  else if(a==='newg'){if(!confirm('Chiudere questa partita e iniziarne una nuova? I tiri restano salvati in Archivio e statistiche.'))return;stop();var gg=G();if(gg&&!R.log.length&&!D.shots.some(function(z){return z.g===gg.id})){mutD(function(){D.games=D.games.filter(function(z){return z.id!==gg.id});if(D.cur===gg.id)D.cur=''})}R=defR();U.pend=null;U.modal=null;U.luAsked=0;U.manual=0;saveR()}
   render();return}
  var sv=e.target.closest('#ct');if(!sv||U.modal)return;var q=svPt(e,sv);
  if(q.x<-30||q.x>1530||q.y<-30||q.y>YMAX+30)return;
