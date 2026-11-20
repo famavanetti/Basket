@@ -20,6 +20,7 @@ function init(){if(P)return P;S.st='';
  }).then(function(u){return u||login()}).then(function(u){S.st='ok';badge();return u},function(e){S.st='err';badge();throw e});
  return P}
 S.ready=init;
+S.db=function(){return init().then(function(){return db})};
 function docId(u){return String(u).replace(/[\/\s]+/g,'_').slice(0,200)}
 /* ---- partite ---- */
 S.pushGame=function(it){return init().then(function(){var o=JSON.parse(JSON.stringify(it));delete o.cl;if(JSON.stringify(o).length>900000)delete o.html;return db.collection('partite').doc(docId(o.uid)).set(o)})};
