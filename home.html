@@ -4,18 +4,21 @@
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css"></head><body>
-<div class="bar"><h1>🏀 Referto Basket</h1><button onclick="logout()">Esci</button></div>
+<div class="bar"><h1>🏀 Referto Basket</h1><span id="who" style="font-size:13px;color:#8d96bd;margin-right:10px"></span><button onclick="cambia()">Cambia persona</button><button onclick="logout()">Esci</button></div>
 <div class="wrap">
 <a class="card" href="referto.html" style="--c:var(--or)"><span class="ic">🏀</span><span><b>Referto</b><small>Apri il referto di gara</small></span></a>
 <a class="card" href="referto_tiri.html" style="--c:#7a3fd1"><span class="ic">⏱</span><span><b>Referto + Tiri</b><small>Referto di una squadra con la mappa dei tiri (tablet)</small></span></a>
 <a class="card" href="anagrafica.html" style="--c:#1646b0"><span class="ic">👥</span><span><b>Anagrafica</b><small id="cnt">Staff e giocatori</small></span></a>
 <a class="card" href="statistiche.html" style="--c:#18a558"><span class="ic">📊</span><span><b>Archivio e statistiche</b><small>Referti di tutte le gare e storico giocatori</small></span></a>
+<a class="card" href="admin.html" style="--c:#6b7390"><span class="ic">🔐</span><span><b>Amministrazione</b><small>Persone, partite e storico accessi (solo amministratore)</small></span></a>
 <a class="card" href="istruzioni.html" style="--c:#d9b52a"><span class="ic">📖</span><span><b>Istruzioni</b><small>Come usare referto, anagrafica e statistiche</small></span></a>
 <button class="btn p" id="install" style="display:none;margin-top:18px" onclick="installa()">⬇ Installa l'app</button>
 <p class="hint" id="ios" style="display:none">Su iPhone: tocca <b>Condividi</b> e poi <b>Aggiungi a schermata Home</b>.</p>
 </div>
-<script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
+<script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script><script src="acl.js"></script>
 <script>richiediLogin();
+function cambia(){rbAcl.logout();location.replace('accesso.html?next=home.html')}
+(function(){var w=rbAcl.who();document.getElementById('who').textContent=w?'👤 '+w.name:''})();
 function conta(){var a=anagGet(),n=function(t){return a.filter(function(x){return x.tipo===t}).length},g=n('giocatore');
 document.getElementById('cnt').textContent=g+' giocatori · '+n('staff')+' staff · '+n('societa')+' società'}conta();
 if(window.rbSync&&rbSync.on){rbSync.anagStart(conta);rbSync.pushAll()}

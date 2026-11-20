@@ -1,0 +1,96 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Amministrazione – Referto Basket</title><meta name="theme-color" content="#0b1233">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b1f;--bar:#0b1233;--pan:#141b3d;--row:#1b2350;--tx:#eef1fb;--mu:#8d96bd;--ok:#1fa35c;--red:#c21f2b;--ta:#d9b52a;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--tx);font-family:Montserrat,system-ui,sans-serif}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:#232c5c;border-radius:8px;padding:10px 14px;font-weight:600}
+.bar{display:flex;align-items:center;gap:10px;background:var(--bar);border-bottom:4px solid var(--ta);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px))}.bar h1{margin:0;font-size:18px;flex:1}
+.bar a,.bar button{color:#fff;text-decoration:none;font-size:14px}
+.wrap{max-width:980px;margin:0 auto;padding:14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.tabs button.on{background:var(--ta);color:#000}
+.card{background:var(--pan);border-radius:10px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:16px}
+label{display:block;color:var(--mu);font-size:12px;margin:10px 0 4px}
+input,select{width:100%;font:inherit;padding:10px;border-radius:8px;border:1px solid #2a3570;background:#0d1330;color:var(--tx)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.row>*{flex:0 0 auto}.row input,.row select{width:auto;flex:1 1 150px}
+.ck{display:flex;gap:6px;flex-wrap:wrap}.ck label{display:flex;align-items:center;gap:6px;margin:0;color:var(--tx);font-size:13px;background:#0d1330;padding:6px 10px;border-radius:14px}.ck input{width:auto}
+.it{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:1px solid #2a3570}.it:first-child{border-top:0}
+.it b{flex:1 1 180px}.it small{display:block;color:var(--mu);font-weight:400}
+.it select{width:auto;flex:1 1 140px}
+.off{opacity:.5}.red{background:var(--red)!important}.ok{background:var(--ok)!important}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 8px;text-align:left;border-bottom:1px solid #2a3570;vertical-align:top}th{color:var(--mu)}
+.tw{overflow-x:auto}
+.hint{color:var(--mu);font-size:13px;margin:6px 0}.msg{color:#ff8a96;font-weight:600;margin-top:8px}
+pre{background:#0d1330;border-radius:8px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap}
+</style></head><body>
+<div class="bar"><h1>🔐 Amministrazione</h1><button id="so" style="display:none" onclick="esci()">Esci</button><a href="home.html">← Home</a></div>
+<div class="wrap" id="app"></div>
+<script src="app.js"></script><script src="firebase-config.js"></script><script src="cal.js"></script><script src="acl.js"></script>
+<script>
+if(!isAuth())location.replace('index.html');
+function $(i){return document.getElementById(i)}
+var C=window.FB_CONFIG||{},base='https://www.gstatic.com/firebasejs/10.12.2/',AP=null,DB=null,TAB='p',P=[],GA=[],AC=[],ACL={q:'',p:''},MSG='',EDT='';
+function load(src){return new Promise(function(ok,ko){var t=document.createElement('script');t.src=src;t.crossOrigin='anonymous';t.onload=ok;t.onerror=function(){ko(new Error('load'))};document.head.appendChild(t)})}
+function fbReady(){return window.firebase?Promise.resolve():load(base+'firebase-app-compat.js').then(function(){return load(base+'firebase-auth-compat.js')}).then(function(){return load(base+'firebase-firestore-compat.js')})}
+function teamLabel(x){return((x.squadra||'')+' '+(x.genere||'')).trim()}
+function teams(){var m={};anagGet().forEach(function(x){if(x.tipo==='giocatore'&&teamLabel(x))m[teamLabel(x)]=1});P.forEach(function(p){(p.teams||[]).forEach(function(t){m[t]=1})});return Object.keys(m).sort()}
+function adminLog(a,d){if(DB)DB.collection('accessi').add({t:Date.now(),pid:'admin',name:'AMMINISTRATORE',page:'admin.html',a:a,d:String(d||'').slice(0,200)}).catch(function(){})}
+function fmt(t){var d=new Date(t);return d.toLocaleDateString('it-IT')+' '+d.toTimeString().slice(0,5)}
+function uid(){return'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+/* ---- accesso amministratore ---- */
+function loginView(){$('app').innerHTML='<div class="card"><h3>Accesso amministratore</h3>'+(C.adminEmail?'<label for="pw">Password amministratore</label><input id="pw" type="password" autocomplete="current-password"><div class="row"><button class="ok" id="go">Entra</button></div><div class="msg" id="lm">'+esc(MSG)+'</div><p class="hint">La password è quella dell\'account Firebase dedicato all\'amministratore. Non è il PIN dello staff.</p>':'<p class="msg">Manca <b>adminEmail</b> in firebase-config.js. Aggiungi l\'email dell\'account amministratore e ricarica.</p>')+'</div>';
+ var g=$('go');if(g){g.onclick=entra;$('pw').onkeydown=function(e){if(e.key==='Enter')entra()}}}
+function entra(){var pw=$('pw').value;if(!pw)return;$('lm').textContent='Accesso…';
+ fbReady().then(function(){AP=firebase.apps.filter(function(a){return a.name==='admin'})[0]||firebase.initializeApp(C,'admin');var au=AP.auth();return au.setPersistence(firebase.auth.Auth.Persistence.SESSION).then(function(){return au.signInWithEmailAndPassword(C.adminEmail,pw)})})
+ .then(start,function(e){MSG=(e&&e.code==='auth/network-request-failed')?'Nessuna connessione.':'Password errata o account non valido.';loginView()})}
+function esci(){try{AP.auth().signOut()}catch(e){}location.reload()}
+function start(){DB=AP.firestore();$('so').style.display='';adminLog('accesso amministratore','');
+ DB.collection('persone').onSnapshot(function(s){P=[];s.forEach(function(d){var v=d.data();v.id=d.id;P.push(v)});P.sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});render()},function(){});
+ DB.collection('gare').onSnapshot(function(s){GA=[];s.forEach(function(d){var v=d.data();v.id=d.id;GA.push(v)});GA.sort(function(a,b){return String(b.d||'').localeCompare(String(a.d||''))});render()},function(){});
+ render()}
+/* ---- viste ---- */
+function render(){if(!DB)return;var tb=[['p','👥 Persone'],['g','🏀 Partite'],['s','🕘 Storico accessi'],['r','⚙ Regole Firebase']];
+ var h='<div class="tabs">'+tb.map(function(t){return'<button data-t="'+t[0]+'" class="'+(TAB===t[0]?'on':'')+'">'+t[1]+'</button>'}).join('')+'</div>';
+ h+=TAB==='p'?vPers():TAB==='g'?vGare():TAB==='s'?vStor():vRegole();
+ var act=document.activeElement&&document.activeElement.id;$('app').innerHTML=h}
+function chk(name,sel,tt){return'<div class="ck">'+tt.map(function(t){return'<label><input type="checkbox" data-ck="'+name+'" value="'+esc(t)+'"'+(sel.indexOf(t)>=0?' checked':'')+'>'+esc(t)+'</label>'}).join('')+'</div>'}
+function vPers(){var tt=teams(),h='<div class="card"><h3>Nuova persona</h3><label for="pn">Nome e cognome</label><input id="pn" autocomplete="off"><label>Squadre che può usare <span class="hint">(nessuna spunta = tutte)</span></label>'+chk('new',[],tt)+'<label for="pp">PIN personale (4 cifre)</label><input id="pp" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="es. 4821"><div class="row"><button class="ok" data-a="padd">Aggiungi</button></div><div class="msg">'+esc(MSG)+'</div></div>';
+ h+='<div class="card"><h3>Persone ('+P.length+')</h3>'+(P.length?P.map(function(p){var ed=EDT===p.id;
+  return'<div class="it'+(p.active===0?' off':'')+'"><b>'+esc(p.name)+(p.active===0?' (disattivata)':'')+'<small>'+esc((p.teams||[]).join(' · ')||'tutte le squadre')+'</small></b><button data-a="ppin" data-v="'+p.id+'">Nuovo PIN</button><button data-a="pedit" data-v="'+p.id+'">Squadre</button><button data-a="ptog" data-v="'+p.id+'">'+(p.active===0?'Riattiva':'Disattiva')+'</button><button class="red" data-a="pdel" data-v="'+p.id+'">Elimina</button></div>'+(ed?'<div style="padding:0 0 10px">'+chk('ed',p.teams||[],tt)+'<div class="row"><button class="ok" data-a="psave" data-v="'+p.id+'">Salva squadre</button><button data-a="pedit" data-v="">Annulla</button></div></div>':'')}).join(''):'<p class="hint">Nessuna persona. Finché l\'elenco è vuoto, chiunque entra senza identificarsi.</p>')+'</div>';return h}
+function pOpts(sel,team){return'<option value="">— nessuno —</option>'+P.filter(function(p){return p.active!==0&&(!(p.teams||[]).length||(p.teams||[]).indexOf(team)>=0)}).map(function(p){return'<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+'</option>'}).join('')}
+function vGare(){var tt=teams(),h='<div class="card"><h3>Nuova partita</h3><label for="gt">Squadra</label><select id="gt">'+tt.map(function(t){return'<option>'+esc(t)+'</option>'}).join('')+'</select><label for="go">Avversario</label><div class="row" style="margin-top:0"><input id="go" autocomplete="off" placeholder="es. Virtus Cernusco"><button data-a="gcal">📅 Calendario</button></div><label for="gd">Data</label><input id="gd" type="date" value="'+new Date().toISOString().slice(0,10)+'"><div class="row"><button class="ok" data-a="gadd">Crea partita</button></div><div class="msg">'+esc(MSG)+'</div><p class="hint">Dopo averla creata, scegli chi lavora al tavolo e chi ai tiri.</p></div>';
+ h+='<div class="card"><h3>Partite ('+GA.length+')</h3>'+(GA.length?GA.map(function(g){return'<div class="it" style="align-items:flex-start"><b>'+esc(g.team)+' vs '+esc(g.opp||'?')+'<small>'+esc(g.d||'')+'</small></b><label style="flex:1 1 150px;margin:0">Tavolo (referto)<select data-g="'+g.id+'" data-f="tavolo">'+pOpts(g.tavolo,g.team)+'</select></label><label style="flex:1 1 150px;margin:0">Tiri<select data-g="'+g.id+'" data-f="tiri">'+pOpts(g.tiri,g.team)+'</select></label><button class="red" data-a="gdel" data-v="'+g.id+'">Elimina</button></div>'}).join(''):'<p class="hint">Nessuna partita creata.</p>')+'</div>';return h}
+function vStor(){var f=AC.filter(function(e){return(!ACL.p||e.pid===ACL.p)&&(!ACL.q||(e.a+' '+e.d+' '+e.page+' '+e.name).toLowerCase().indexOf(ACL.q.toLowerCase())>=0)});
+ var ps={};AC.forEach(function(e){if(e.name)ps[e.pid]=e.name});
+ return'<div class="card"><h3>Storico accessi</h3><div class="row" style="margin-top:0"><select id="sp"><option value="">Tutte le persone</option>'+Object.keys(ps).map(function(k){return'<option value="'+esc(k)+'"'+(ACL.p===k?' selected':'')+'>'+esc(ps[k])+'</option>'}).join('')+'</select><input id="sq" placeholder="Cerca azione…" value="'+esc(ACL.q)+'"><button data-a="sref">↻ Aggiorna</button><button data-a="scsv">⬇ Scarica CSV</button><button class="red" data-a="sold">Elimina oltre 90 giorni</button></div><p class="hint">'+f.length+' righe (ultime 500).</p><div class="tw"><table><thead><tr><th>Quando</th><th>Persona</th><th>Azione</th><th>Dettaglio</th><th>Pagina</th></tr></thead><tbody>'+f.map(function(e){return'<tr><td>'+fmt(e.t)+'</td><td>'+esc(e.name||'—')+'</td><td>'+esc(e.a)+'</td><td>'+esc(e.d)+'</td><td>'+esc(e.page)+'</td></tr>'}).join('')+'</tbody></table></div></div>'}
+function vRegole(){return'<div class="card"><h3>Regole Firestore</h3><p class="hint">Da incollare nella console Firebase (Firestore → Regole), <b>aggiungendo</b> questi blocchi a quelli che già hai. Sostituisci le due email con quelle dei due account.</p><pre>function staff(){return request.auth!=null &amp;&amp; request.auth.token.email==\'EMAIL_STAFF\';}\nfunction admin(){return request.auth!=null &amp;&amp; request.auth.token.email==\'EMAIL_ADMIN\';}\nmatch /persone/{id}{allow read: if staff()||admin(); allow write: if admin();}\nmatch /gare/{id}{allow read: if staff()||admin(); allow write: if admin();}\nmatch /accessi/{id}{allow create: if staff()||admin(); allow read,delete: if admin();}</pre><p class="hint">E in firebase-config.js aggiungi <b>adminEmail</b>. Per creare l\'account amministratore: Firebase → Authentication → Utenti → Aggiungi utente.</p></div>'}
+function loadAcc(){return DB.collection('accessi').orderBy('t','desc').limit(500).get().then(function(s){AC=[];s.forEach(function(d){AC.push(d.data())});render()},function(){MSG='Impossibile leggere lo storico: controlla le regole.';render()})}
+/* ---- azioni ---- */
+function ckv(n){return Array.prototype.map.call(document.querySelectorAll('[data-ck="'+n+'"]:checked'),function(x){return x.value})}
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||!DB)return;
+ if(b.dataset.t){TAB=b.dataset.t;MSG='';if(TAB==='s')loadAcc();return render()}
+ var a=b.dataset.a,v=b.dataset.v;if(!a)return;
+ if(a==='padd'){var n=$('pn').value.trim(),pin=$('pp').value.trim();if(!n)return(MSG='Scrivi il nome.',render());if(!/^\d{4}$/.test(pin))return(MSG='Il PIN deve avere 4 cifre.',render());
+  var id=uid(),tm=ckv('new');return rbAcl.pin(id,pin).then(function(h){return DB.collection('persone').doc(id).set({name:n,teams:tm,ph:h,active:1,u:Date.now()})}).then(function(){MSG='';adminLog('persona aggiunta',n)})}
+ if(a==='ppin'){var p=P.filter(function(x){return x.id===v})[0],np=prompt('Nuovo PIN (4 cifre) per '+p.name+':');if(np===null)return;if(!/^\d{4}$/.test(np.trim()))return alert('Il PIN deve avere 4 cifre.');return rbAcl.pin(v,np.trim()).then(function(h){return DB.collection('persone').doc(v).update({ph:h,u:Date.now()})}).then(function(){adminLog('PIN cambiato',p.name);alert('PIN cambiato.')})}
+ if(a==='pedit'){EDT=v||'';return render()}
+ if(a==='psave'){var t=ckv('ed');return DB.collection('persone').doc(v).update({teams:t,u:Date.now()}).then(function(){EDT='';adminLog('squadre persona',v)})}
+ if(a==='ptog'){var q=P.filter(function(x){return x.id===v})[0];return DB.collection('persone').doc(v).update({active:q.active===0?1:0,u:Date.now()}).then(function(){adminLog(q.active===0?'persona riattivata':'persona disattivata',q.name)})}
+ if(a==='pdel'){var d=P.filter(function(x){return x.id===v})[0];if(!confirm('Eliminare '+d.name+'? Lo storico resta.'))return;return DB.collection('persone').doc(v).delete().then(function(){adminLog('persona eliminata',d.name)})}
+ if(a==='gcal'){return rbCal.open({me:$('gt').value,onPick:function(opp,g){$('go').value=opp;if(g&&g.d)$('gd').value=g.d}})}
+ if(a==='gadd'){var tm2=$('gt').value,op=$('go').value.trim(),dd=$('gd').value;if(!tm2||!op)return(MSG='Servono squadra e avversario.',render());return DB.collection('gare').add({team:tm2,opp:op,d:dd,tavolo:'',tiri:'',created:Date.now()}).then(function(){MSG='';adminLog('partita creata',tm2+' vs '+op+' '+dd)})}
+ if(a==='gdel'){var g=GA.filter(function(x){return x.id===v})[0];if(!confirm('Eliminare la partita '+g.team+' vs '+g.opp+'?'))return;return DB.collection('gare').doc(v).delete().then(function(){adminLog('partita eliminata',g.team+' vs '+g.opp)})}
+ if(a==='sref')return loadAcc();
+ if(a==='scsv'){var rows=[['Quando','Persona','Azione','Dettaglio','Pagina']].concat(AC.filter(function(e){return(!ACL.p||e.pid===ACL.p)&&(!ACL.q||(e.a+' '+e.d+' '+e.page+' '+e.name).toLowerCase().indexOf(ACL.q.toLowerCase())>=0)}).map(function(e){return[fmt(e.t),e.name||'',e.a,e.d,e.page]}));
+  var csv='﻿'+rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"'}).join(';')}).join('\r\n'),u=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),l=document.createElement('a');l.href=u;l.download='storico_accessi_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(l);l.click();l.remove();return}
+ if(a==='sold'){if(!confirm('Eliminare dallo storico tutto ciò che è più vecchio di 90 giorni?'))return;var cut=Date.now()-90*864e5;
+  return DB.collection('accessi').where('t','<',cut).limit(400).get().then(function(s){var bt=DB.batch();s.forEach(function(d){bt.delete(d.ref)});return bt.commit().then(function(){alert('Eliminate '+s.size+' righe'+(s.size===400?' (ripeti per le altre)':''));return loadAcc()})})}});
+document.addEventListener('change',function(e){var t=e.target;if(t.dataset&&t.dataset.g){var o={};o[t.dataset.f]=t.value;DB.collection('gare').doc(t.dataset.g).update(o).then(function(){adminLog('assegnazione '+t.dataset.f,t.dataset.g+' → '+t.value)})}
+ if(t.id==='sp'){ACL.p=t.value;render()}});
+document.addEventListener('input',function(e){if(e.target.id==='sq'){ACL.q=e.target.value;var c=e.target.selectionStart;render();var n=$('sq');if(n){n.focus();n.setSelectionRange(c,c)}}});
+loginView();
+if(C.adminEmail)fbReady().then(function(){var a=firebase.apps.filter(function(x){return x.name==='admin'})[0]||firebase.initializeApp(C,'admin');AP=a;a.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).then(function(){var un=a.auth().onAuthStateChanged(function(u){if(typeof un==='function')un();if(u)start()})})}).catch(function(){});
+</script></body></html>

@@ -31,7 +31,7 @@ table.st{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
 <p class="hint">Dal tablet: a fine gara premi <b>Invia al PC</b> e importa qui il file ricevuto (anche più file insieme).<br>I nomi dei giocatori vengono collegati all'Anagrafica di questo dispositivo tramite tessera o nome e cognome. Le statistiche restano al giocatore anche se gioca in una squadra diversa dalla sua.<br>I dati sono salvati in questo browser: fai ogni tanto la copia di sicurezza.</p>
 </div>
 <div class="modal" id="m"><div class="sheet big" id="mb"></div></div>
-<script src="app.js"></script><script src="court.js"></script><script src="xlsx.full.min.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script>
+<script src="app.js"></script><script src="court.js"></script><script src="xlsx.full.min.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script><script src="acl.js"></script>
 <script>
 richiediLogin();
 function $(i){return document.getElementById(i)}
@@ -177,10 +177,10 @@ function vediPartita(u){var g=G.filter(function(x){return x.uid===u})[0],TS=tset
   return apriM('<h2>'+esc(z0.a)+(z0.sa===''||z0.sa==null?'':' '+z0.sa+' – '+z0.sb)+' '+esc(z0.b)+'</h2><p class="hint" style="text-align:left;margin:0 0 10px">'+dt(z0.d)+' · solo tiri (nessun referto del tavolo collegato)</p>'+tiriStart(mkShots(z0),true)+'<div class="row" style="margin-top:12px"><button class="btn" onclick="chiudi()">Chiudi</button><button class="btn r" data-del="'+esc(u)+'" onclick="eliminaT(this.dataset.del)">Elimina tiri</button></div>')}
  var zt=setFor(g,TS),tx=zt?tiriStart(mkShots(zt),true):'';
  apriM('<h2>'+esc(g.a)+' '+g.sa+' – '+g.sb+' '+esc(g.b)+'</h2><p class="hint" style="text-align:left;margin:0 0 10px">'+dt(g.d)+(g.g?'':' · senza dati per le statistiche (partita giocata con la versione precedente)')+'</p>'+tx+'<h3 style="margin:14px 0 8px">Referto</h3><div class="paper">'+(g.html||'')+'</div><div class="row" style="margin-top:12px"><button class="btn" onclick="chiudi()">Chiudi</button><button class="btn r" data-del="'+esc(g.uid)+'" onclick="elimina(this.dataset.del)">Elimina</button></div>')}
-function eliminaT(u){if(!confirm('Eliminare i tiri di questa partita dall\'archivio? Non si può annullare.'))return;if(window.rbSync&&rbSync.on)rbSync.delGame(u);var c=tcGet();delete c[u];try{localStorage.setItem(TK,JSON.stringify(c))}catch(e){}
+function eliminaT(u){if(!confirm('Eliminare i tiri di questa partita dall\'archivio? Non si può annullare.'))return;rbAcl.log('elimina tiri dall\'archivio',u);if(window.rbSync&&rbSync.on)rbSync.delGame(u);var c=tcGet();delete c[u];try{localStorage.setItem(TK,JSON.stringify(c))}catch(e){}
  try{var D0=JSON.parse(localStorage.getItem('rb_tiri_v1')||'null');if(D0&&D0.games){var ids=D0.games.filter(function(g){return'T|'+(g.gid||g.id)+'|'+(g.mi||0)===u}).map(function(g){return g.id});if(ids.length){D0.games=D0.games.filter(function(g){return ids.indexOf(g.id)<0});D0.shots=(D0.shots||[]).filter(function(z){return ids.indexOf(z.g)<0});localStorage.setItem('rb_tiri_v1',JSON.stringify(D0))}}}catch(e){}
  chiudi();render()}
-function elimina(u){if(!confirm('Eliminare questa partita dall\'archivio? Spariscono anche le statistiche che ne derivano.'))return;if(window.rbSync&&rbSync.on)rbSync.delGame(u);dbDel(u).then(function(){chiudi();return reload()})}
+function elimina(u){if(!confirm('Eliminare questa partita dall\'archivio? Spariscono anche le statistiche che ne derivano.'))return;rbAcl.log('elimina partita dall\'archivio',u);if(window.rbSync&&rbSync.on)rbSync.delGame(u);dbDel(u).then(function(){chiudi();return reload()})}
 
 /* ---------- importa / copia di sicurezza / Excel ---------- */
 function leggi(f){return new Promise(function(ok){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=function(){ok(null)};r.readAsText(f)})}
