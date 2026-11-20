@@ -7,7 +7,7 @@ var FB_CONFIG = {
   storageBucket: "basket-52da5.firebasestorage.app",
   messagingSenderId: "627495322235",
   appId: "1:627495322235:web:43a0ad0204e43df96018de",
-  email: "basketramdaverio@basket.it"   
+  email: "basketramdaverio@basket.it",   
   adminEmail:"effeventitre23@gmail.com" 
    // account condiviso dello staff (Authentication > Utenti)
 };
