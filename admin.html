@@ -48,8 +48,8 @@ function entra(){var pw=$('pw').value;if(!pw)return;$('lm').textContent='Accesso
  .then(start,function(e){MSG=(e&&e.code==='auth/network-request-failed')?'Nessuna connessione.':'Password errata o account non valido.';loginView()})}
 function esci(){try{AP.auth().signOut()}catch(e){}location.reload()}
 function start(){DB=AP.firestore();$('so').style.display='';adminLog('accesso amministratore','');
- DB.collection('persone').onSnapshot(function(s){P=[];s.forEach(function(d){var v=d.data();v.id=d.id;P.push(v)});P.sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});render()},function(){});
- DB.collection('gare').onSnapshot(function(s){GA=[];s.forEach(function(d){var v=d.data();v.id=d.id;GA.push(v)});GA.sort(function(a,b){return String(b.d||'').localeCompare(String(a.d||''))});render()},function(){});
+ DB.collection('persone').onSnapshot(function(s){P=[];s.forEach(function(d){var v=d.data();v.id=d.id;P.push(v)});P.sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});render()},snapErr);
+ DB.collection('gare').onSnapshot(function(s){GA=[];s.forEach(function(d){var v=d.data();v.id=d.id;GA.push(v)});GA.sort(function(a,b){return String(b.d||'').localeCompare(String(a.d||''))});render()},snapErr);
  render()}
 /* ---- viste ---- */
 function render(){if(!DB)return;var tb=[['p','👥 Persone'],['g','🏀 Partite'],['s','🕘 Storico accessi'],['r','⚙ Regole Firebase']];
@@ -91,6 +91,9 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
 document.addEventListener('change',function(e){var t=e.target;if(t.dataset&&t.dataset.g){var o={};o[t.dataset.f]=t.value;DB.collection('gare').doc(t.dataset.g).update(o).then(function(){adminLog('assegnazione '+t.dataset.f,t.dataset.g+' → '+t.value)})}
  if(t.id==='sp'){ACL.p=t.value;render()}});
 document.addEventListener('input',function(e){if(e.target.id==='sq'){ACL.q=e.target.value;var c=e.target.selectionStart;render();var n=$('sq');if(n){n.focus();n.setSelectionRange(c,c)}}});
+var SE=0;
+function snapErr(e){if(SE++)return;alert('Non riesco a leggere i dati: '+(e&&e.code||e)+(e&&e.code==='permission-denied'?'\n\nLe regole Firestore non permettono la lettura. Controlla di aver pubblicato le regole (Firestore Database → Regole → Pubblica) e che l\'email amministratore sia quella giusta.':''))}
+addEventListener('unhandledrejection',function(e){var r=e.reason||{};alert('Non salvato: '+(r.code||r.message||r)+(r.code==='permission-denied'?'\n\nLe regole Firestore non permettono la scrittura. Controlla di aver pubblicato le regole (Firestore Database → Regole → Pubblica).':''))});
 loginView();
 if(C.adminEmail)fbReady().then(function(){var a=firebase.apps.filter(function(x){return x.name==='admin'})[0]||firebase.initializeApp(C,'admin');AP=a;a.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).then(function(){var un=a.auth().onAuthStateChanged(function(u){if(typeof un==='function')un();if(u)start()})})}).catch(function(){});
 </script></body></html>
