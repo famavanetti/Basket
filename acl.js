@@ -24,9 +24,19 @@ function log(a,d){var w=J(WK,null)||{};var q=J(QK,[]);q.push({t:Date.now(),pid:w
 var fl=false;
 function flush(){if(fl||!window.rbSync||!rbSync.on||!rbSync.db||navigator.onLine===false)return;var q=J(QK,[]);if(!q.length)return;fl=true;
  rbSync.db().then(function(db){var n=q.length,b=db.batch(),c=db.collection('accessi');q.forEach(function(e){b.set(c.doc(),e)});return b.commit().then(function(){var cur=J(QK,[]);Sv(QK,cur.slice(n))})}).catch(function(){}).then(function(){fl=false})}
+/* limitazione per squadra: chi ha squadre assegnate vede e modifica solo l'anagrafica di quelle squadre */
+function lbl(x){return((x.squadra||'')+' '+(x.genere||'')).trim().replace(/\s+/g,' ')}
+function myTeams(){if(page()==='admin.html')return null;var w=who();return w&&w.teams&&w.teams.length?w.teams:null}
+function inScope(x,t){if(!x||x.tipo==='societa')return false;var l=lbl(x);return t.indexOf(l)>=0||(x.tipo==='staff'&&!l)}
+function scope(list){var t=myTeams();if(!t)return list;return list.filter(function(x){return x&&(x.tipo==='societa'||inScope(x,t))})}
+function nz(s){return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function teamOk(name){var t=myTeams();if(!t)return true;var n=nz(name);return t.some(function(x){var m=nz(x);return n&&m&&(n.indexOf(m)>=0||m.indexOf(n)>=0)})}
 function need(){if(!who())location.replace('accesso.html?next='+encodeURIComponent(page()+location.search))}
 function pageLog(){var w=who();if(!w)return;touch();var k='rb_pl_'+page(),t=+sessionStorage.getItem(k)||0;if(Date.now()-t<20*60000)return;try{sessionStorage.setItem(k,Date.now())}catch(e){}log('pagina','')}
-window.rbAcl={who:who,persons:persons,pdata:pdata,refresh:refresh,login:login,loginAnon:loginAnon,logout:logout_,log:log,flush:flush,need:need,pin:pin,sha:sha};
+window.rbAcl={scope:scope,teamOk:teamOk,myTeams:myTeams,who:who,persons:persons,pdata:pdata,refresh:refresh,login:login,loginAnon:loginAnon,logout:logout_,log:log,flush:flush,need:need,pin:pin,sha:sha};
+if(typeof window.anagGet==='function'&&typeof window.anagPut==='function'){var _ag=window.anagGet,_ap=window.anagPut;
+ window.anagGet=function(){return scope(_ag())};
+ window.anagPut=function(a){var t=myTeams();if(!t)return _ap(a);var keep=_ag().filter(function(x){return!(x&&(inScope(x,t)))});return _ap(keep.concat((a||[]).filter(function(x){return inScope(x,t)})))}}
 /* sostituisce richiediLogin() e logout() di app.js: oltre al PIN dello staff serve la persona identificata */
 if(typeof window.isAuth==='function'){window.richiediLogin=function(){if(!isAuth())location.replace('index.html');else need()};
  window.logout=function(){try{logout_()}catch(e){}try{localStorage.removeItem('rb_auth')}catch(e){}location.replace('index.html')}}

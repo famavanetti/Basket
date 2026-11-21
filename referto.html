@@ -459,7 +459,7 @@ function modalView(){
 
 
 var RB_AK='rb_anagrafica_v1';
-function anagRead(){try{var a=JSON.parse(localStorage.getItem(RB_AK)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function anagRead(){try{var a=JSON.parse(localStorage.getItem(RB_AK)||'[]');if(!Array.isArray(a))return[];return window.rbAcl?rbAcl.scope(a):a}catch(e){return[]}}
 function anagKey(x){return[(x.squadra||'').trim(),(x.genere||'').trim()].filter(Boolean).join(' ')||'Senza squadra'}
 function anagSq(a){var g={};a.forEach(function(x){if(x.tipo=='societa')return;var k=anagKey(x);g[k]=g[k]||{n:k,g:0,s:0};if(x.tipo=='staff')g[k].s++;else g[k].g++});return Object.keys(g).sort().map(function(k){return g[k]})}
 var ROLEMAP={'allenatore':'Capo allenatore','vice allenatore':'Assistente allenatore','dirigente':'Accompagnatore','preparatore':'Preparatore fisico','preparatore atletico':'Preparatore fisico','assistente':'Assistente allenatore','scorer':'Accompagnatore'};

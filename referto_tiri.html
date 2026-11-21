@@ -254,7 +254,7 @@ function sendTiri(id,quiet){var g=D.games.filter(function(z){return z.id===id})[
   tiri:{gid:g.gid||'',mi:g.mi||0,sq:g.sq||'',av:g.av||'',d:g.d||today(),roster:ours(g).map(function(p){return{pk:p.pk,n:p.n,nm:p.nm}}),
    shots:sh.map(function(z){return{pk:z.pk,n:z.n,x:z.x,y:z.y,v:z.v,r:z.r,q:z.q}})}};
  return rbSync.pushGame(doc).then(function(){lg('invio tiri',(g.sq||'')+' vs '+(g.av||'')+' · '+sh.length+' tiri');mutD(function(){var x=D.games.filter(function(z){return z.id===id})[0];if(x)x.sent=sh.length});if(!quiet)toast('Inviati '+sh.length+' tiri all\'Archivio e statistiche');render();return sh.length},function(){if(!quiet)toast('Invio non riuscito: riprova con internet');return 0})}
-function savedCard(){var gs=D.games.filter(function(g){return D.shots.some(function(z){return z.g===g.id})});if(!gs.length)return'';
+function savedCard(){var gs=D.games.filter(function(g){return D.shots.some(function(z){return z.g===g.id})&&(!window.rbAcl||rbAcl.teamOk(g.sq))});if(!gs.length)return'';
  return'<div class="card"><b>🎯 Partite con tiri su questo tablet</b><div class="hint" style="margin:4px 0 6px">Dopo l\'invio i tiri compaiono in <b>Archivio e statistiche</b> (anche sugli altri dispositivi).</div>'+gs.map(function(g){var n=D.shots.filter(function(z){return z.g===g.id}).length;
   return'<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--ln)"><b>'+esc(g.sq||'')+'</b> vs <b>'+esc(g.av||'')+'</b><div class="hint">'+esc(g.d||'')+' · '+n+' tiri · '+(g.sent===n?'✓ inviata':g.sent?'modificata dopo l\'invio':'non ancora inviata')+'</div><div class="row">'+(g.sent===n?'':'<button class="gold" data-a="gsend" data-v="'+g.id+'">Invia all\'archivio</button>')+'<button data-a="gdel" data-v="'+g.id+'" style="color:#ff8a96">Elimina dal tablet</button></div></div>'}).join('')+'</div>'}
 function closeGame(){var gg=G(),gid=gg&&gg.id;if(gg)lg('fine partita Referto+Tiri',(gg.sq||'')+' vs '+(gg.av||''));if(gg){var d=derive();mutD(function(){var x=D.games.filter(function(z){return z.id===gid})[0];if(x){x.sa=d.our;x.sb=d.opp;x.end=1}})}
@@ -312,7 +312,7 @@ function gameView(){var lv=lvState(),g=G(),d=derive(),qn=Math.min(R.q,4),tf=d.tf
 
 function liveCard(){if(!window.rbSync||!rbSync.on||!rbSync.liveWatch)return'';
  var h='<div class="card"><b>📋 Dal referto</b>';if(U.live===null)return h+'<div class="hint" style="margin-top:6px">Collegamento al referto in corso…</div></div>';
- var hh=hidList(),Ls=U.live.filter(function(x){return x.u>Date.now()-36*36e5&&hh.indexOf(x.gid)<0}).sort(function(a,b){return b.u-a.u});
+ var hh=hidList(),Ls=U.live.filter(function(x){return x.u>Date.now()-36*36e5&&hh.indexOf(x.gid)<0&&(!window.rbAcl||(x.teams||[]).some(function(t){return rbAcl.teamOk(t.name)}))}).sort(function(a,b){return b.u-a.u});
  if(!Ls.length)return h+'<div class="hint" style="margin-top:6px">Nessun referto recente. Sull\'altro dispositivo apri il referto e importa i convocati: compare qui da solo.</div></div>';
  return h+Ls.map(function(x){var t=x.teams||[],A=t[0]||{},B=t[1]||{},mi=A.mine&&!B.mine?0:B.mine&&!A.mine?1:-1,ex=D.games.filter(function(g){return g.gid===x.gid})[0],hm=new Date(x.u).toTimeString().slice(0,5);
   return'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ln)"><b>'+esc(A.name||'?')+'</b> vs <b>'+esc(B.name||'?')+'</b><div class="hint">'+(x.g&&x.g.over?'terminata':x.st==='setup'?'in preparazione':'in corso')+' · '+(A.p||[]).length+' + '+(B.p||[]).length+' convocati · aggiornato '+hm+'</div><div class="row">'+
