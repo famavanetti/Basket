@@ -34,11 +34,12 @@ function view(){var a=$('app'),pd=rbAcl.pdata(),L=rbAcl.persons().sort(function(
  if(L.length)h+=L.map(function(p){return'<button class="pp" data-p="'+esc(p.id)+'">'+esc(p.name)+'<small>'+esc((p.teams||[]).join(' · ')||'tutte le squadre')+'</small></button>'}).join('');
  else if(LOAD)h+='<p class="hint">Carico l\'elenco…</p>';
  else if(pd.empty){rbAcl.loginAnon();return go()}
- else h+='<div class="pp" style="cursor:default">Elenco non disponibile<small>Collegati a internet almeno una volta su questo dispositivo, poi riprova. Se non hai ancora un nome, chiedi all\'amministratore.</small></div>';
+ else h+='<div class="pp" style="cursor:default">Elenco non disponibile<small>Collegati a internet almeno una volta su questo dispositivo, poi riprova. Se non hai ancora un nome, chiedi all\'amministratore.</small></div><button class="pp" data-c="conn" style="background:#14803c;text-align:center">🔑 Collega questo dispositivo<small style="color:#d7f5e3">Inserisci la password dello staff (una volta sola)</small></button>';
  h+='<button class="ln" data-r="1">↻ Aggiorna l\'elenco</button> <button class="ln" onclick="location.href=\'admin.html\'">Amministratore</button>';a.innerHTML=h}
 document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||BUSY)return;
  if(b.dataset.p){SEL=b.dataset.p;PIN='';return view()}
  if(b.dataset.r){LOAD=true;view();return rbAcl.refresh().then(function(){LOAD=false;view()})}
+ if(b.dataset.c==='conn'){try{sessionStorage.removeItem('rb_nologin')}catch(e){}return location.reload()}
  var k=b.dataset.k;if(k===undefined)return;
  if(k==='x'){SEL=null;PIN='';return view()}
  if(k==='d'){PIN=PIN.slice(0,-1);return view()}
