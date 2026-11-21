@@ -26,7 +26,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 8px;t
 .hint{color:var(--mu);font-size:13px;margin:6px 0}.msg{color:#ff8a96;font-weight:600;margin-top:8px}
 pre{background:#0d1330;border-radius:8px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap}
 </style></head><body>
-<div class="bar"><h1>🔐 Amministrazione</h1><button id="so" style="display:none" onclick="esci()">Esci</button><a href="home.html">← Home</a></div>
+<div class="bar"><h1>🔐 Amministrazione <small style="font-weight:400;color:var(--mu);font-size:11px">v33</small></h1><button id="so" style="display:none" onclick="esci()">Esci</button><a href="home.html">← Home</a></div>
 <div class="wrap" id="app"></div>
 <script src="app.js"></script><script src="firebase-config.js"></script><script src="cal.js"></script><script src="acl.js"></script>
 <script>
@@ -74,8 +74,8 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
  if(b.dataset.t){TAB=b.dataset.t;MSG='';if(TAB==='s')loadAcc();return render()}
  var a=b.dataset.a,v=b.dataset.v;if(!a)return;
  if(a==='padd'){var n=$('pn').value.trim(),pin=$('pp').value.trim();if(!n)return(MSG='Scrivi il nome.',render());if(!/^\d{4}$/.test(pin))return(MSG='Il PIN deve avere 4 cifre.',render());
-  var id=uid(),tm=ckv('new');return rbAcl.pin(id,pin).then(function(h){return DB.collection('persone').doc(id).set({name:n,teams:tm,ph:h,active:1,u:Date.now()})}).then(function(){MSG='';adminLog('persona aggiunta',n)})}
- if(a==='ppin'){var p=P.filter(function(x){return x.id===v})[0],np=prompt('Nuovo PIN (4 cifre) per '+p.name+':');if(np===null)return;if(!/^\d{4}$/.test(np.trim()))return alert('Il PIN deve avere 4 cifre.');return rbAcl.pin(v,np.trim()).then(function(h){return DB.collection('persone').doc(v).update({ph:h,u:Date.now()})}).then(function(){adminLog('PIN cambiato',p.name);alert('PIN cambiato.')})}
+  var id=uid(),tm=ckv('new');MSG='Salvataggio…';render();return tmo(pinH(id,pin).then(function(h){return DB.collection('persone').doc(id).set({name:n,teams:tm,ph:h,active:1,u:Date.now()})})).then(function(){MSG='✔ '+n+' salvato';adminLog('persona aggiunta',n);render()},function(e){MSG='';render();fail(e)})}
+ if(a==='ppin'){var p=P.filter(function(x){return x.id===v})[0],np=prompt('Nuovo PIN (4 cifre) per '+p.name+':');if(np===null)return;if(!/^\d{4}$/.test(np.trim()))return alert('Il PIN deve avere 4 cifre.');return tmo(pinH(v,np.trim()).then(function(h){return DB.collection('persone').doc(v).update({ph:h,u:Date.now()})})).then(function(){adminLog('PIN cambiato',p.name);alert('PIN cambiato.')},fail)}
  if(a==='pedit'){EDT=v||'';return render()}
  if(a==='psave'){var t=ckv('ed');return DB.collection('persone').doc(v).update({teams:t,u:Date.now()}).then(function(){EDT='';adminLog('squadre persona',v)})}
  if(a==='ptog'){var q=P.filter(function(x){return x.id===v})[0];return DB.collection('persone').doc(v).update({active:q.active===0?1:0,u:Date.now()}).then(function(){adminLog(q.active===0?'persona riattivata':'persona disattivata',q.name)})}
@@ -92,6 +92,10 @@ document.addEventListener('change',function(e){var t=e.target;if(t.dataset&&t.da
  if(t.id==='sp'){ACL.p=t.value;render()}});
 document.addEventListener('input',function(e){if(e.target.id==='sq'){ACL.q=e.target.value;var c=e.target.selectionStart;render();var n=$('sq');if(n){n.focus();n.setSelectionRange(c,c)}}});
 var SE=0;
+function pinH(id,p){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(id+':'+p)).then(function(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return('0'+x.toString(16)).slice(-2)}).join('')})}
+function tmo(pr,ms){return Promise.race([pr,new Promise(function(_,ko){setTimeout(function(){ko({code:'timeout',message:'Nessuna risposta dal database in '+(ms/1000)+' secondi: controlla la connessione e le regole Firestore.'})},ms||10000)})])}
+function fail(e){alert('Non salvato: '+((e&&e.code)||'')+' '+((e&&e.message)||e)+((e&&e.code==='permission-denied')?'\n\nLe regole Firestore non permettono la scrittura: controlla di aver pubblicato le regole.':''))}
+addEventListener('error',function(e){alert('Errore nella pagina: '+e.message)});
 function snapErr(e){if(SE++)return;alert('Non riesco a leggere i dati: '+(e&&e.code||e)+(e&&e.code==='permission-denied'?'\n\nLe regole Firestore non permettono la lettura. Controlla di aver pubblicato le regole (Firestore Database → Regole → Pubblica) e che l\'email amministratore sia quella giusta.':''))}
 addEventListener('unhandledrejection',function(e){var r=e.reason||{};alert('Non salvato: '+(r.code||r.message||r)+(r.code==='permission-denied'?'\n\nLe regole Firestore non permettono la scrittura. Controlla di aver pubblicato le regole (Firestore Database → Regole → Pubblica).':''))});
 loginView();
