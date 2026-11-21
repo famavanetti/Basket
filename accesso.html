@@ -20,11 +20,14 @@ button{font:inherit;border:0;cursor:pointer;color:inherit}
 </style></head><body>
 <div class="bar"><h1>👤 Chi sei?</h1></div>
 <div class="wrap" id="app"></div>
-<script>(function(){try{var t=sessionStorage.getItem('rb_pw_tmp');if(t){sessionStorage.removeItem('rb_pw_tmp');var p0=window.prompt;window.prompt=function(){window.prompt=p0;return t}}}catch(e){}})()</script>
+<script>window.__al=[];window.alert=function(m){window.__al.push(String(m));try{window.dispatchEvent(new Event('rbalert'))}catch(e){}};
+(function(){try{var t=sessionStorage.getItem('rb_pw_tmp');if(t){sessionStorage.removeItem('rb_pw_tmp');var p0=window.prompt;window.prompt=function(){window.prompt=p0;return t}}}catch(e){}})()</script>
 <script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script><script src="acl.js"></script>
 <script>
 if(!isAuth())location.replace('index.html');
 function $(i){return document.getElementById(i)}
+var ERRM='';addEventListener('rbalert',function(){if(!SEL)view()});
+function diag(){var m=(window.__al||[]).slice(-1)[0]||ERRM,st=window.rbSync?(rbSync.st==='ok'?'collegato':rbSync.st==='err'?'non collegato':'connessione…'):'sincronizzazione non disponibile';return'<p class="hint" style="margin-top:10px">Stato: <b>'+esc(st)+'</b>'+(m?'<br><span style="color:#ff8a96">'+esc(m)+'</span>':'')+'</p>'}
 var NEXT=(new URLSearchParams(location.search)).get('next')||'home.html',SEL=null,PIN='',BUSY=0,LOAD=true;
 function go(){location.replace(/^[A-Za-z0-9_.\-]+(\?.*)?$/.test(NEXT)?NEXT:'home.html')}
 function view(){var a=$('app'),pd=rbAcl.pdata(),L=rbAcl.persons().sort(function(x,y){return(x.name||'').localeCompare(y.name||'')});
@@ -35,7 +38,7 @@ function view(){var a=$('app'),pd=rbAcl.pdata(),L=rbAcl.persons().sort(function(
  if(L.length)h+=L.map(function(p){return'<button class="pp" data-p="'+esc(p.id)+'">'+esc(p.name)+'<small>'+esc((p.teams||[]).join(' · ')||'tutte le squadre')+'</small></button>'}).join('');
  else if(LOAD)h+='<p class="hint">Carico l\'elenco…</p>';
  else if(pd.empty){rbAcl.loginAnon();return go()}
- else h+='<div class="pp" style="cursor:default">Elenco non disponibile<small>Collegati a internet almeno una volta su questo dispositivo, poi riprova. Se non hai ancora un nome, chiedi all\'amministratore.</small></div><div class="pp" style="cursor:default">🔑 Collega questo dispositivo<small>Password dello staff (si chiede una volta sola)</small><input id="spw" type="password" autocomplete="current-password" placeholder="Password staff" style="width:100%;margin:10px 0;padding:12px;border-radius:8px;border:1px solid #2a3570;background:#0d1330;color:#eef1fb;font:inherit"><button data-c="conn" style="background:#14803c;border-radius:8px;padding:12px 16px;font-weight:700">Collega</button><div class="msg" id="cm" style="text-align:left;margin-top:8px"></div></div>';
+ else h+='<div class="pp" style="cursor:default">Elenco non disponibile<small>Collegati a internet almeno una volta su questo dispositivo, poi riprova. Se non hai ancora un nome, chiedi all\'amministratore.</small></div><div class="pp" style="cursor:default">🔑 Collega questo dispositivo<small>Password dello staff (si chiede una volta sola)</small><input id="spw" type="password" autocomplete="current-password" placeholder="Password staff" style="width:100%;margin:10px 0;padding:12px;border-radius:8px;border:1px solid #2a3570;background:#0d1330;color:#eef1fb;font:inherit"><button data-c="conn" style="background:#14803c;border-radius:8px;padding:12px 16px;font-weight:700">Collega</button><div class="msg" id="cm" style="text-align:left;margin-top:8px"></div></div>'+diag();
  h+='<button class="ln" data-r="1">↻ Aggiorna l\'elenco</button> <button class="ln" onclick="location.href=\'admin.html\'">Amministratore</button>';a.innerHTML=h}
 document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||BUSY)return;
  if(b.dataset.p){SEL=b.dataset.p;PIN='';return view()}
@@ -47,5 +50,6 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
  if(PIN.length>=4)return;PIN+=k;view();
  if(PIN.length===4){BUSY=1;var p=PIN;rbAcl.login(SEL,p).then(function(ok){BUSY=0;if(ok)return go();PIN='';view();$('msg').textContent='PIN errato'})}});
 view();
+if(window.rbSync&&rbSync.db)rbSync.db().catch(function(e){ERRM=(e&&(e.code||e.message))||'errore';LOAD=false;if(!SEL)view()});
 rbAcl.refresh().then(function(){LOAD=false;if(!SEL)view()});setTimeout(function(){LOAD=false;if(!SEL)view()},6000);
 </script></body></html>
