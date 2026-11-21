@@ -17,8 +17,8 @@
 </div>
 <script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script><script src="acl.js"></script>
 <script>richiediLogin();
-function cambia(){rbAcl.logout();location.replace('accesso.html?next=home.html')}
-(function(){var w=rbAcl.who();document.getElementById('who').textContent=w?'👤 '+w.name:''})();
+function cambia(){if(!window.rbAcl){alert('Manca il file acl.js sul sito: caricalo su GitHub insieme agli altri e ricarica l\'app.');return}rbAcl.logout();location.replace('accesso.html?next=home.html')}
+(function(){if(!window.rbAcl)return;var w=rbAcl.who();document.getElementById('who').textContent=w?'👤 '+w.name:''})();
 function conta(){var a=anagGet(),n=function(t){return a.filter(function(x){return x.tipo===t}).length},g=n('giocatore');
 document.getElementById('cnt').textContent=g+' giocatori · '+n('staff')+' staff · '+n('societa')+' società'}conta();
 if(window.rbSync&&rbSync.on){rbSync.anagStart(conta);rbSync.pushAll()}

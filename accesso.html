@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chi sei? – Referto Basket</title><meta name="theme-color" content="#0b1233">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b1f;--bar:#0b1233;--pan:#141b3d;--row:#1b2350;--tx:#eef1fb;--mu:#8d96bd;--ok:#1fa35c;--red:#c21f2b;--ta:#d9b52a;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--tx);font-family:Montserrat,system-ui,sans-serif}
+button{font:inherit;border:0;cursor:pointer;color:inherit}
+.bar{background:var(--bar);border-bottom:4px solid var(--ta);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px))}.bar h1{margin:0;font-size:18px}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+.hint{color:var(--mu);font-size:13px;margin:8px 0}
+.pp{display:block;width:100%;text-align:left;background:var(--pan);border-radius:8px;padding:14px;margin-bottom:8px;font-weight:700;font-size:16px}
+.pp small{display:block;color:var(--mu);font-weight:400;font-size:12px;margin-top:2px}
+.dots{display:flex;gap:14px;justify-content:center;margin:14px 0}.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ta)}.dots i.on{background:var(--ta)}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:320px;margin:0 auto}.kp button{background:var(--row);border-radius:10px;padding:18px 0;font-size:24px;font-weight:700}
+.kp .g{background:#232c5c;font-size:16px}
+.msg{text-align:center;color:#ff8a96;min-height:20px;font-weight:600}
+.ln{background:none;color:var(--mu);text-decoration:underline;padding:10px 0;font-size:14px}
+</style></head><body>
+<div class="bar"><h1>👤 Chi sei?</h1></div>
+<div class="wrap" id="app"></div>
+<script src="app.js"></script><script src="firebase-config.js"></script><script src="sync.js"></script><script src="acl.js"></script>
+<script>
+if(!isAuth())location.replace('index.html');
+function $(i){return document.getElementById(i)}
+var NEXT=(new URLSearchParams(location.search)).get('next')||'home.html',SEL=null,PIN='',BUSY=0,LOAD=true;
+function go(){location.replace(/^[A-Za-z0-9_.\-]+(\?.*)?$/.test(NEXT)?NEXT:'home.html')}
+function view(){var a=$('app'),pd=rbAcl.pdata(),L=rbAcl.persons().sort(function(x,y){return(x.name||'').localeCompare(y.name||'')});
+ if(SEL){var p=L.filter(function(x){return x.id===SEL})[0];if(!p){SEL=null;return view()}
+  a.innerHTML='<p style="text-align:center;font-size:20px;font-weight:700;margin:6px 0 0">'+esc(p.name)+'</p><p class="hint" style="text-align:center">Inserisci il tuo PIN personale</p><div class="dots">'+[0,1,2,3].map(function(i){return'<i class="'+(i<PIN.length?'on':'')+'"></i>'}).join('')+'</div><div class="msg" id="msg"></div><div class="kp">'+
+   [1,2,3,4,5,6,7,8,9].map(function(n){return'<button data-k="'+n+'">'+n+'</button>'}).join('')+'<button class="g" data-k="x">Indietro</button><button data-k="0">0</button><button class="g" data-k="d">⌫</button></div>';return}
+ var h='<p class="hint">Scegli il tuo nome. Serve per registrare chi usa l\'app e su quale partita.</p>';
+ if(L.length)h+=L.map(function(p){return'<button class="pp" data-p="'+esc(p.id)+'">'+esc(p.name)+'<small>'+esc((p.teams||[]).join(' · ')||'tutte le squadre')+'</small></button>'}).join('');
+ else if(LOAD)h+='<p class="hint">Carico l\'elenco…</p>';
+ else if(pd.empty){rbAcl.loginAnon();return go()}
+ else h+='<div class="pp" style="cursor:default">Elenco non disponibile<small>Collegati a internet almeno una volta su questo dispositivo, poi riprova. Se non hai ancora un nome, chiedi all\'amministratore.</small></div>';
+ h+='<button class="ln" data-r="1">↻ Aggiorna l\'elenco</button> <button class="ln" onclick="location.href=\'admin.html\'">Amministratore</button>';a.innerHTML=h}
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||BUSY)return;
+ if(b.dataset.p){SEL=b.dataset.p;PIN='';return view()}
+ if(b.dataset.r){LOAD=true;view();return rbAcl.refresh().then(function(){LOAD=false;view()})}
+ var k=b.dataset.k;if(k===undefined)return;
+ if(k==='x'){SEL=null;PIN='';return view()}
+ if(k==='d'){PIN=PIN.slice(0,-1);return view()}
+ if(PIN.length>=4)return;PIN+=k;view();
+ if(PIN.length===4){BUSY=1;var p=PIN;rbAcl.login(SEL,p).then(function(ok){BUSY=0;if(ok)return go();PIN='';view();$('msg').textContent='PIN errato'})}});
+view();
+rbAcl.refresh().then(function(){LOAD=false;if(!SEL)view()});setTimeout(function(){LOAD=false;if(!SEL)view()},6000);
+</script></body></html>
