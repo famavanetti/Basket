@@ -21,7 +21,7 @@ function restFlush(q){var b=base();if(!b)return Promise.reject();var ws=q.map(fu
  return parts.reduce(function(p,w){return p.then(function(){return fetch(b+':commit?key='+encodeURIComponent(cfg().apiKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({writes:w})}).then(function(r){if(!r.ok)throw new Error(r.status)})})},Promise.resolve())}
 /* elenco persone dal cloud (copia locale per l'uso offline) */
 function refresh(){return restRefresh().then(function(ok){return ok||refresh_()})}
-function refresh_(){if(!window.rbSync||!rbSync.on||!rbSync.db)return Promise.resolve(false);
+function refresh_(){if(!window.rbSync||!rbSync.on||!rbSync.db||rbSync.st!=='ok')return Promise.resolve(false);
  return rbSync.db().then(function(db){return db.collection('persone').get({source:'server'}).catch(function(){return db.collection('persone').get()}).then(function(s){
   var l=[];s.forEach(function(d){var v=d.data();v.id=d.id;l.push(v)});Sv(PK,{list:l,ts:Date.now(),empty:(!l.length&&!s.metadata.fromCache)?1:0});return true})}).catch(function(){return false})}
 function login(id,p){var pe=pdata().list.filter(function(x){return x.id===id&&x.active!==0})[0];if(!pe)return Promise.resolve(false);
@@ -35,8 +35,18 @@ function log(a,d){var w=J(WK,null)||{};var q=J(QK,[]);q.push({t:Date.now(),pid:w
 var fl=false;
 function flush(){if(fl||navigator.onLine===false)return;var q=J(QK,[]);if(!q.length)return;fl=true;var n0=q.length;
  restFlush(q).then(function(){Sv(QK,J(QK,[]).slice(n0));fl=false},function(){fl=false;flush_(q)})}
-function flush_(q){if(fl||!window.rbSync||!rbSync.on||!rbSync.db)return;fl=true;
+function flush_(q){if(fl||!window.rbSync||!rbSync.on||!rbSync.db||rbSync.st!=='ok')return;fl=true;
  rbSync.db().then(function(db){var n=q.length,b=db.batch(),c=db.collection('accessi');q.forEach(function(e){b.set(c.doc(),e)});return b.commit().then(function(){var cur=J(QK,[]);Sv(QK,cur.slice(n))})}).catch(function(){}).then(function(){fl=false})}
+/* collegamento alla sincronizzazione senza finestra di sistema: tocca il badge «non collegato», scrivi la password staff */
+try{var _t=sessionStorage.getItem('rb_pw_tmp');if(_t){sessionStorage.removeItem('rb_pw_tmp');var _p0=window.prompt;window.prompt=function(){window.prompt=_p0;return _t}}}catch(e){}
+function connBox(){if(document.getElementById('rbconn'))return;var d=document.createElement('div');d.id='rbconn';d.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px;font:15px Montserrat,system-ui,sans-serif';
+ d.innerHTML='<div style="background:#141b3d;color:#eef1fb;border-radius:12px;padding:18px;max-width:420px;width:100%"><b style="font-size:17px">🔑 Collega questo dispositivo</b><p style="color:#8d96bd;font-size:13px;margin:8px 0">Password dello staff per la sincronizzazione online (si chiede una volta sola).</p><input id="rbcpw" type="password" autocomplete="current-password" placeholder="Password staff" style="width:100%;padding:12px;border-radius:8px;border:1px solid #2a3570;background:#0d1330;color:#eef1fb;font:inherit"><div style="display:flex;gap:8px;margin-top:12px"><button id="rbcgo" style="flex:1;background:#14803c;color:#fff;border:0;border-radius:8px;padding:12px;font:700 15px inherit;font-family:inherit">Collega</button><button id="rbcx" style="background:#232c5c;color:#eef1fb;border:0;border-radius:8px;padding:12px 16px;font-family:inherit">Annulla</button></div></div>';document.body.appendChild(d);
+ document.getElementById('rbcx').onclick=function(){d.remove()};
+ document.getElementById('rbcgo').onclick=function(){var v=document.getElementById('rbcpw').value;if(!v)return;try{sessionStorage.removeItem('rb_nologin');sessionStorage.setItem('rb_pw_tmp',v)}catch(e){}location.reload()};
+ setTimeout(function(){document.getElementById('rbcpw').focus()},50)}
+(function(){var st=document.createElement('style');st.textContent='#rbcloud.cn{pointer-events:auto!important;cursor:pointer;border-color:#d9b52a!important}#rbcloud.cn::after{content:" · tocca per collegare"}';(document.head||document.documentElement).appendChild(st);
+ setInterval(function(){var b=document.getElementById('rbcloud');if(b)b.className=/non collegato/.test(b.textContent)?'cn':''},800);
+ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#rbcloud');if(b&&b.className==='cn')connBox()})})();
 /* limitazione per squadra: chi ha squadre assegnate vede e modifica solo l'anagrafica di quelle squadre */
 function lbl(x){return((x.squadra||'')+' '+(x.genere||'')).trim().replace(/\s+/g,' ')}
 function myTeams(){if(page()==='admin.html')return null;var w=who();return w&&w.teams&&w.teams.length?w.teams:null}
