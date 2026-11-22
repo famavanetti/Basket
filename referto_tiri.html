@@ -60,6 +60,23 @@ label{display:block;color:var(--mu);font-size:12px;font-weight:700;margin:10px 0
  .log{max-height:84px}
 }
 @media (max-width:1100px) and (orientation:landscape){.main{grid-template-columns:80px 54px minmax(0,1fr) 180px}.p .n{font-size:28px}.clk{font-size:36px}}
+/* smartphone */
+@media (orientation:portrait) and (max-width:600px){
+ #rbcloud{display:none!important}
+ .top{gap:6px;padding:4px 6px;height:auto;flex-wrap:wrap;row-gap:3px}.top .to,.top .fl3,.top .team{display:none}.menu{position:static;width:36px;height:36px;font-size:22px}.top .go,.top .lvb{position:static!important;order:9;height:34px;padding:0 10px;font-size:11px;display:flex;align-items:center}.sc{font-size:22px;padding:0 6px}.clk{font-size:30px;min-width:0;padding:0}.q{font-size:11px}
+ .main{overflow-y:auto;overflow-x:hidden;padding:6px;gap:6px;grid-template-rows:auto minmax(190px,32dvh) 92px auto auto}
+ .p .n{font-size:30px}.p small{font-size:10px}.p em{display:none}
+ .ac{grid-template-rows:70px 44px 44px 44px 44px}.ac .b{font-size:12px}.ac .r1,.ac .r0{font-size:17px}
+ .log{max-height:none}.log div{padding:5px 8px}
+}
+@media (orientation:landscape) and (max-height:480px){
+ .top{height:46px;gap:8px;padding:0 100px 0 44px;overflow:hidden}.menu{top:3px;height:40px}.clk{font-size:30px;min-width:0}.sc{font-size:22px}.team{font-size:12px;max-width:140px}.go{top:4px;height:38px;padding:0 10px}
+ .main{padding:4px;gap:4px;grid-template-columns:66px 50px minmax(0,1fr) 168px;overflow:hidden}
+ .p .n{font-size:22px}.p small{font-size:9px}.p em{display:none}.bars{display:none}.bench{height:30px;font-size:9px}
+ .c{min-height:30px;font-size:12px}.fs{display:none}
+ .ac{gap:4px}.ac .b{font-size:11px}.ac .r1,.ac .r0{font-size:16px}
+ .log{display:none}
+}
 /* modali */
 .mo{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:30;padding:10px}
 .md{background:#141b3d;border-radius:14px;padding:16px;width:min(720px,100%);max-height:94dvh;overflow:auto;border:1px solid var(--ln)}
@@ -73,8 +90,8 @@ label{display:block;color:var(--mu);font-size:12px;font-weight:700;margin:10px 0
 .tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl th,.tbl td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--ln)}.tbl td:first-child,.tbl th:first-child{text-align:left}.tbl tr[data-a]{cursor:pointer}.tbl tr[data-a]:active{background:#232b57}.tbl .c{min-height:32px;padding:2px 8px}.tbl .tt td{border-top:2px solid var(--ln)}
 .lvb{position:absolute;right:8px;top:14px;font-size:11px;font-weight:900;padding:6px 10px;border-radius:14px;background:#0a3b24;color:#2fd16a;border:1px solid #2fd16a}
 .lvb.sh{right:106px}.lvb.off{background:#4a2a08;color:#ffb347;border-color:#ffb347}.lvb.man{background:#ffb347;color:#000;border-color:#ffb347}
-.ac.lk{grid-template-rows:3fr 3fr 1fr 1fr 1fr}.ac.lk .b.w{grid-column:span 1}.ac.lk .b.full{grid-column:1/-1}
-@media (orientation:portrait){.ac.lk{grid-template-rows:84px 50px 50px 50px}.ac.lk .b.w{grid-column:span 2}.ac.lk .b.full{grid-column:1/-1}}
+.ac.lk{grid-template-rows:3fr 3fr 1fr 1fr 1fr 1fr}.ac.lk .b.w{grid-column:span 1}.ac.lk .b.full{grid-column:1/-1}
+@media (orientation:portrait){.ac.lk{grid-template-rows:84px 50px 50px 50px 50px}.ac.lk .b.w{grid-column:span 2}.ac.lk .b.full{grid-column:1/-1}}
 .eds{position:absolute;left:8px;right:8px;bottom:8px;z-index:3;background:#141b3dee;border:1px solid var(--ln);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}.eds button{min-height:38px;padding:0 10px;font-size:12px}
 .mi{display:block;width:100%;text-align:left;padding:14px;margin-top:6px;min-height:50px;font-size:14px}
 .card{background:var(--pan);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -181,7 +198,7 @@ function lvBadge(lv){if(!lv)return'';var sh=lv==='live'?'':' sh';
  if(lv==='live')return'<div class="lvb on">● TAVOLO'+(chkRows().some(function(r){return r.bad})?' ⚠':'')+'</div>';
  if(lv==='man')return'<button class="lvb man'+sh+'" data-a="align">⟳ Allinea al tavolo</button>';
  return'<div class="lvb off'+sh+'">● OFFLINE · manuale</div>'}
-function acLk(lv){var on=U.pend;return'<div class="ac lk"><button class="b r1" data-a="res" data-v="1">● Segnato</button><button class="b r0" data-a="res" data-v="0">✕ Sbagliato</button><div class="g3"><button class="b'+(on&&on.v===2?' on':'')+'" data-a="pts" data-v="2">2</button><button class="b'+(on&&on.v===3?' on':'')+'" data-a="pts" data-v="3">3</button></div><button class="b w'+(lv==='live'?' full':'')+'" data-a="undo">↩ Annulla</button>'+(lv==='live'?'':'<button class="b w" data-a="lineup">Cambi</button><button class="b w qe full" data-a="qend">Fine quarto</button>')+'</div>'}
+function acLk(lv){var on=U.pend;return'<div class="ac lk"><button class="b r1" data-a="res" data-v="1">● Segnato</button><button class="b r0" data-a="res" data-v="0">✕ Sbagliato</button><div class="g3"><button class="b'+(on&&on.v===2?' on':'')+'" data-a="pts" data-v="2">2</button><button class="b'+(on&&on.v===3?' on':'')+'" data-a="pts" data-v="3">3</button></div><button class="b w'+(lv==='live'?' full':'')+'" data-a="undo">↩ Annulla</button>'+(lv==='live'?'':'<button class="b w" data-a="lineup">Cambi</button><button class="b w qe full" data-a="qend">Fine quarto</button><div class="g3"><button class="b" data-a="opp" data-v="1">+1 AV</button><button class="b" data-a="opp" data-v="2">+2 AV</button><button class="b" data-a="opp" data-v="3">+3 AV</button></div>')+'</div>'}
 function chkRows(){var rows=[];if(!linked()||!U.lp)return rows;ours(G()).forEach(function(p){var lp=U.lp[String(p.n)];if(!lp)return;var sp=0;D.shots.forEach(function(s){if(s.g===R.g&&s.pk===p.pk&&s.r)sp+=s.v});var rp=lp.pts||0;if(sp!==rp)rows.push({p:p,sp:sp,rp:rp,bad:sp>rp})});return rows}
 function chkHtml(){if(!linked()||!U.lp)return'';var r=chkRows();
  if(!r.length)return'<div class="hint" style="margin-top:10px">✔ Punti dei tiri segnati e punti del referto coincidono.</div>';
