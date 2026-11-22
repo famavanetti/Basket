@@ -50,6 +50,5 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
  if(PIN.length>=4)return;PIN+=k;view();
  if(PIN.length===4){BUSY=1;var p=PIN;rbAcl.login(SEL,p).then(function(ok){BUSY=0;if(ok)return go();PIN='';view();$('msg').textContent='PIN errato'})}});
 view();
-if(window.rbSync&&rbSync.db)rbSync.db().catch(function(e){ERRM=(e&&(e.code||e.message))||'errore';LOAD=false;if(!SEL)view()});
 rbAcl.refresh().then(function(){LOAD=false;if(!SEL)view()});setTimeout(function(){LOAD=false;if(!SEL)view()},6000);
 </script></body></html>
