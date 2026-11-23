@@ -120,6 +120,14 @@ button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2
  .game{padding:6px;gap:6px}.game>*{min-width:0}
  html,body{overflow-x:hidden}
 }
+@media(max-width:600px) and (orientation:portrait){
+ html,body{height:auto;min-height:100%;overflow-y:auto}#app{height:auto;min-height:100dvh}
+ .game{flex:none!important;grid-template-rows:auto auto!important;grid-template-columns:60px 60px minmax(0,1fr)!important}
+ .col{min-height:0}.pl{min-height:52px;flex:none;font-size:22px}.th{padding:8px 0;font-size:22px}
+ .tools{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:3px}.tools button{min-width:0!important;padding:8px 0!important} .logw{max-height:420px;min-width:0}.log{overflow-x:hidden}
+ .ev{grid-template-columns:18px 44px 1fr!important;gap:4px;padding:5px 4px;font-size:11px}.ev .qq,.ev .tm,.ev i{display:none}.ev>span:nth-of-type(3){grid-column:1/-1}
+ .acts{grid-template-columns:repeat(3,minmax(0,1fr))!important}.acts .w{grid-column:span 1!important}.acts button{font-size:12px!important;padding:14px 2px!important}
+}
 @media(max-height:480px) and (orientation:landscape){
  .sb{padding-top:3px;padding-bottom:3px}.sc{font-size:22px}.clk{font-size:26px}.play{height:34px}.game{padding:4px;gap:4px}.acts button{padding:8px 2px!important}
  .game{grid-template-columns:62px 62px minmax(0,1fr) 190px!important;grid-template-rows:minmax(0,1fr)!important}.acts{grid-column:4!important;grid-template-columns:1fr 1fr!important;grid-auto-rows:minmax(34px,1fr)!important;align-content:stretch!important}.acts .w{padding:2px!important;font-size:11px!important}.col button{padding:2px!important}.col .n,.col .jr{font-size:20px!important}
@@ -689,6 +697,6 @@ function closeHelp(){var o=document.getElementById('help');if(o)o.remove();docum
 document.addEventListener('keydown',function(e){if(e.key=='Escape'&&document.getElementById('help'))closeHelp()});
 </script>
 
-<div style="position:fixed;left:3px;bottom:1px;font:9px sans-serif;color:#8d96bd;opacity:.6;z-index:99;pointer-events:none">r44</div>
+<div style="position:fixed;left:3px;bottom:1px;font:9px sans-serif;color:#8d96bd;opacity:.6;z-index:99;pointer-events:none">r45</div>
 </body>
 </html>
