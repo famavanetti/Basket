@@ -122,6 +122,19 @@ button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2
 }
 @media(max-width:600px) and (orientation:portrait){
  html,body{height:auto;min-height:100%;overflow-y:auto}#app{height:auto;min-height:100dvh}
+ .sb{display:grid!important;grid-template-columns:24px minmax(0,1fr) 116px minmax(0,1fr) 24px;grid-template-rows:auto auto auto;gap:5px 6px!important;padding:6px!important;align-items:stretch;justify-content:stretch!important}
+ .sb>*{min-width:0;margin:0}
+ .sb .tfq{flex-direction:column;align-items:stretch;gap:3px;grid-row:1/4;align-self:stretch;outline:none}.sb .tfq i{width:auto;height:auto;flex:1;min-height:12px}.sb .tfq b{display:none}
+ .sb>:nth-child(3){grid-column:1}.sb>:nth-child(9){grid-column:5}
+ .sb>:nth-child(5){grid-column:2;grid-row:1}.sb>:nth-child(4){grid-column:2;grid-row:2}.sb>:nth-child(2){grid-column:2;grid-row:3}
+ .sb>:nth-child(8){grid-column:4;grid-row:1}.sb>:nth-child(10){grid-column:4;grid-row:2}.sb>:nth-child(11){grid-column:4;grid-row:3}
+ .sb .ham{grid-column:3;grid-row:1;justify-self:start;position:static!important;transform:none!important;width:auto!important;font-size:26px;line-height:1;padding:0 6px;align-self:center}
+ .sb .q{grid-column:3;grid-row:1;justify-self:end;align-self:center;font-size:12px}
+ .sb .clk{grid-column:3;grid-row:2;font-size:34px!important;min-width:0!important;padding:0;align-self:center}
+ .sb .play{grid-column:3!important;grid-row:3;position:static!important;transform:none!important;width:100%!important;min-width:0;height:34px!important;padding:0!important;font-size:12px!important}
+ .sb .sc{font-size:30px!important;min-width:0!important;padding:2px 0!important;line-height:1.1}
+ .sb .arw{justify-content:center;padding:3px 0;font-size:13px!important;gap:4px}
+ .sb .mini{display:flex;justify-content:space-between;align-items:center;font-size:10px}.sb .mini button{padding:2px 8px;font-size:12px}
  .game{flex:none!important;grid-template-rows:auto auto!important;grid-template-columns:60px 60px minmax(0,1fr)!important}
  .col{min-height:0}.pl{min-height:52px;flex:none;font-size:22px}.th{padding:8px 0;font-size:22px}
  .tools{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:3px}.tools button{min-width:0!important;padding:8px 0!important} .logw{max-height:420px;min-width:0}.log{overflow-x:hidden}
@@ -697,6 +710,6 @@ function closeHelp(){var o=document.getElementById('help');if(o)o.remove();docum
 document.addEventListener('keydown',function(e){if(e.key=='Escape'&&document.getElementById('help'))closeHelp()});
 </script>
 
-<div style="position:fixed;left:3px;bottom:1px;font:9px sans-serif;color:#8d96bd;opacity:.6;z-index:99;pointer-events:none">r45</div>
+<div style="position:fixed;left:3px;bottom:1px;font:9px sans-serif;color:#8d96bd;opacity:.6;z-index:99;pointer-events:none">r46</div>
 </body>
 </html>
